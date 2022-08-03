@@ -57,7 +57,7 @@ extension Data {
     }
 }
 
-struct All: Codable {
+struct All: Codable, Equatable {
     var bool: Bool
     var int: Int
     var int8: Int8
@@ -104,38 +104,16 @@ extension All {
             nilArray: nil,
             emptyArray: [],
             bytes: Data([27, 28, 29]),
-            superCodable: .init(tag: "hello", index: 3)
+            superCodable: .init(name: "hello", index: 3)
         )
     }
 }
 
-extension All: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.bool == rhs.bool &&
-            lhs.int == rhs.int &&
-            lhs.int8 == rhs.int8 &&
-            lhs.int16 == rhs.int16 &&
-            lhs.int32 == rhs.int32 &&
-            lhs.int64 == rhs.int64 &&
-            lhs.uint == rhs.uint &&
-            lhs.uint8 == rhs.uint8 &&
-            lhs.uint16 == rhs.uint16 &&
-            lhs.uint32 == rhs.uint32 &&
-            lhs.uint64 == rhs.uint64 &&
-            lhs.float == rhs.float &&
-            lhs.double == rhs.double &&
-            lhs.string == rhs.string &&
-            lhs.map == rhs.map &&
-            lhs.mapP == rhs.mapP &&
-            lhs.floatMap == rhs.floatMap &&
-            lhs.nilArray == rhs.nilArray &&
-            lhs.emptyArray == rhs.emptyArray &&
-            lhs.bytes == rhs.bytes &&
-            lhs.superCodable == rhs.superCodable
+class Small: Codable, Equatable {
+    static func == (lhs: Small, rhs: Small) -> Bool {
+        return lhs.tag == rhs.tag
     }
-}
 
-class Small: Codable {
     var tag: String
     init(tag: String) {
         self.tag = tag
@@ -151,22 +129,32 @@ class Small: Codable {
     }
 }
 
-extension Small: Equatable {
-    static func == (lhs: Small, rhs: Small) -> Bool {
-        lhs.tag == rhs.tag
+class Name: Codable {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: Self.CodingKeys.self)
+        try container.encode(name, forKey: .name)
     }
 }
 
-class SuperCodable: Small {
+class SuperCodable: Name {
     var index: Int
 
     private enum CodingKeys: String, CodingKey {
         case index
     }
 
-    required init(tag: String, index: Int) {
+    required init(name: String, index: Int) {
         self.index = index
-        super.init(tag: tag)
+        super.init(name: name)
     }
 
     required init(from decoder: Decoder) throws {
@@ -186,6 +174,8 @@ class SuperCodable: Small {
     }
 }
 
-func == (lhs: SuperCodable, rhs: SuperCodable) -> Bool {
-    lhs.tag == rhs.tag && lhs.index == rhs.index
+extension SuperCodable: Equatable {
+    static func == (lhs: SuperCodable, rhs: SuperCodable) -> Bool {
+        return lhs.name == rhs.name && lhs.index == rhs.index
+    }
 }

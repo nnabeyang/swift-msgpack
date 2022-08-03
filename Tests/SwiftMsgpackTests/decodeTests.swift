@@ -113,40 +113,22 @@ private extension Data {
     }
 }
 
-struct Pair: Codable {
+struct Pair: Codable, Equatable {
     var X: UInt8
     var Y: UInt8
 }
 
-extension Pair: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.X == rhs.X && lhs.Y == rhs.Y
-    }
-}
-
-struct PairInt: Codable {
+struct PairInt: Codable, Equatable {
     var X: Int8
     var Y: Int8
 }
 
-extension PairInt: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.X == rhs.X && lhs.Y == rhs.Y
-    }
-}
-
-struct PairStr: Codable {
+struct PairStr: Codable, Equatable {
     var X: String
     var Y: String
 }
 
-extension PairStr: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.X == rhs.X && lhs.Y == rhs.Y
-    }
-}
-
-struct PairArray: Codable {
+struct PairArray: Codable, Equatable {
     var X: UInt8
     var Y: UInt8
     init(X: UInt8, Y: UInt8) {
@@ -167,13 +149,7 @@ struct PairArray: Codable {
     }
 }
 
-extension PairArray: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.X == rhs.X && lhs.Y == rhs.Y
-    }
-}
-
-struct SS: Codable {
+struct SS: Codable, Equatable {
     var a: [String]
     init(a: [String]) {
         self.a = a
@@ -196,13 +172,7 @@ struct SS: Codable {
     }
 }
 
-extension SS: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
-    }
-}
-
-private struct UIS: Decodable {
+private struct UIS: Decodable, Equatable {
     var a: [UInt8]
     init(a: [UInt8]) {
         self.a = a
@@ -218,13 +188,7 @@ private struct UIS: Decodable {
     }
 }
 
-extension UIS: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
-    }
-}
-
-struct IS: Codable {
+struct IS: Codable, Equatable {
     var a: [Int8]
     init(a: [Int8]) {
         self.a = a
@@ -247,13 +211,7 @@ struct IS: Codable {
     }
 }
 
-extension IS: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
-    }
-}
-
-struct FS: Codable {
+struct FS: Codable, Equatable {
     var a: [Float]
     init(a: [Float]) {
         self.a = a
@@ -276,13 +234,7 @@ struct FS: Codable {
     }
 }
 
-extension FS: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
-    }
-}
-
-struct BS: Codable {
+struct BS: Codable, Equatable {
     var a: [Bool]
     init(a: [Bool]) {
         self.a = a
@@ -305,13 +257,7 @@ struct BS: Codable {
     }
 }
 
-extension BS: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
-    }
-}
-
-private struct UIS2: Codable {
+private struct UIS2: Codable, Equatable {
     var a: [[UInt8]]
     init(a: [[UInt8]]) {
         self.a = a
@@ -342,13 +288,7 @@ private struct UIS2: Codable {
     }
 }
 
-extension UIS2: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
-    }
-}
-
-private struct Pairs: Decodable {
+private struct Pairs: Decodable, Equatable {
     var a: [Pair]
     init(a: [Pair]) {
         self.a = a
@@ -360,10 +300,6 @@ private struct Pairs: Decodable {
         enum CodingKeys: CodingKey {
             case X
             case Y
-        }
-
-        static func == (lhs: Self, rhs: Self) -> Bool {
-            lhs.X == rhs.X && lhs.Y == rhs.Y
         }
     }
 
@@ -377,11 +313,5 @@ private struct Pairs: Decodable {
             b.Y = try values.decode(UInt8.self, forKey: .Y)
             a.append(b)
         }
-    }
-}
-
-extension Pairs: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.a == rhs.a
     }
 }
