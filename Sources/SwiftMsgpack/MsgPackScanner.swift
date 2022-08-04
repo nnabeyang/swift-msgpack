@@ -3,6 +3,7 @@ import Foundation
 indirect enum MsgPackValue {
     case none
     case literal(Data)
+    case ext(Int8, Data)
     case array([MsgPackValue])
     case map([MsgPackValue], [MsgPackValue: MsgPackValue])
     static let Nil = literal(.init([0xC0]))
@@ -14,6 +15,8 @@ extension MsgPackValue {
         case .none:
             return 0
         case .literal:
+            return 1
+        case .ext:
             return 1
         case let .array(a):
             return a.count
@@ -27,6 +30,8 @@ extension MsgPackValue {
         case .none:
             return .array([])
         case .literal:
+            return .array([self])
+        case .ext:
             return .array([self])
         case .array:
             return self
@@ -47,6 +52,8 @@ extension MsgPackValue {
         case .none:
             return .map([], [:])
         case .literal:
+            return .map([], [:])
+        case .ext:
             return .map([], [:])
         case let .array(a):
             if a.count % 2 != 0 {
@@ -73,6 +80,8 @@ extension MsgPackValue {
         case .none:
             return .none
         case .literal:
+            return .none
+        case .ext:
             return .none
         case let .array(a):
             return a[index]
@@ -111,6 +120,8 @@ extension MsgPackValue {
             return "none"
         case .literal:
             return "a literal"
+        case .ext:
+            return "a extension"
         case .array:
             return "an array"
         case .map:
@@ -140,6 +151,10 @@ extension MsgPackValue: Hashable {
         case let .map(_, map):
             hasher.combine(0x3)
             hasher.combine(map)
+        case let .ext(typeNo, data):
+            hasher.combine(0x4)
+            hasher.combine(typeNo)
+            hasher.combine(data)
         case .none:
             break
         }
@@ -255,12 +270,18 @@ class MsgPackScanner {
             let nn = 1 << (c - 0xC4)
             let dd = data[i ..< i + nn]
             i += try bigEndianInt(dd) + nn
+        case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
+            let nn = 1 << (c - 0xC7)
+            let dd = data[i ..< i + nn]
+            i += try bigEndianInt(dd) + nn + 1
         case 0xCA, 0xCB: // Float, Double
             i += 4 << (c - 0xCA)
         case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
             i += 1 << (c - 0xCC)
         case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
             i += 1 << (c - 0xD0)
+        case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 4, fixext 8, fixext 16
+            i += 1 + (1 << (c - 0xD4))
         case 0xD9, 0xDA, 0xDB: // str8, str16, str32
             let nn = 1 << (c - 0xD9)
             let dd = data[i ..< i + nn]
@@ -303,6 +324,13 @@ class MsgPackScanner {
             v = .literal(item)
         case 0xC4, 0xC5, 0xC6: // bin8, bin16, bin32
             v = .literal(item.dropFirst(1 + (1 << (c - 0xC4))))
+        case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
+            let nn = 1 + 1 << (c - 0xC7)
+            let dd = [UInt8](item)
+            let n = dd.count
+            let typeNo = Int8(bigEndian: Data([dd[nn]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
+            v = .ext(typeNo, .init(dd[nn + 1 ..< n]))
+            return
         case 0xCA, 0xCB:
             v = .literal(item.dropFirst(1))
         case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
@@ -310,6 +338,12 @@ class MsgPackScanner {
             return
         case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
             v = .literal(item.dropFirst(1))
+            return
+        case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 2, fixext 4, fixext 8
+            let dd = [UInt8](item)
+            let n = dd.count
+            let typeNo = Int8(bigEndian: Data([dd[1]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
+            v = .ext(typeNo, .init(dd[2 ..< n]))
             return
         case 0xD9, 0xDA, 0xDB: // str8, str16, str32
             v = .literal(item.dropFirst(1 + (1 << (c - 0xD9))))

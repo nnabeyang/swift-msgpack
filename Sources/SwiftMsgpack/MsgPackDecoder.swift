@@ -2,14 +2,28 @@ import Foundation
 
 open class MsgPackDecoder {
     public init() {}
-    open func decode<T: Decodable>(_: T.Type, from data: Data) throws -> T {
+    open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         let scanner: MsgPackScanner = .init(data: data)
         var value: MsgPackValue = .none
         try scanner.parse(&value)
         let decoder: _MsgPackDecoder = .init(from: value)
-        return try decoder.unwrap(as: T.self)
+        do {
+            return try decoder.unwrap(as: T.self)
+        } catch {
+            if let error = error as? MsgPackDecodingError {
+                throw error.asDecodingError(type, codingPath: [])
+            }
+            throw error
+        }
     }
 }
+
+public protocol MsgPackDecodable: Decodable {
+    var type: Int8 { get }
+    init(msgPack data: Data) throws
+}
+
+typealias MsgPackCodable = MsgPackEncodable & MsgPackDecodable
 
 private class _MsgPackDecoder: Decoder {
     var codingPath: [CodingKey]
@@ -191,6 +205,10 @@ extension _MsgPackDecoder {
         if type == Data.self || type == NSData.self {
             return try unwrapData() as! T
         }
+        if let type = type as? MsgPackDecodable.Type {
+            let value = try unwrapMsgPackDecodable(as: type)
+            return value as! T
+        }
         return try T(from: self)
     }
 
@@ -199,6 +217,17 @@ extension _MsgPackDecoder {
             throw DecodingError.typeMismatch(Data.self, DecodingError.Context(codingPath: codingPath, debugDescription: ""))
         }
         return v
+    }
+
+    func unwrapMsgPackDecodable(as type: MsgPackDecodable.Type) throws -> MsgPackDecodable {
+        guard case let .ext(typeNo, data) = value else {
+            throw DecodingError.typeMismatch(MsgPackDecodable.self, DecodingError.Context(codingPath: codingPath, debugDescription: ""))
+        }
+        let value = try type.init(msgPack: data)
+        guard value.type == typeNo else {
+            throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: codingPath, debugDescription: "extension type number mismatch: expected: \(value.type) got: \(typeNo)"))
+        }
+        return value
     }
 }
 
@@ -388,11 +417,18 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
         try decodeUInt(as: UInt64.self)
     }
 
-    mutating func decode<T>(_: T.Type) throws -> T where T: Decodable {
+    mutating func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
         let newDecoder: _MsgPackDecoder = try decoderForNextElement(ofType: T.self)
-        let result: T = try newDecoder.unwrap(as: T.self)
-        currentIndex += 1
-        return result
+        do {
+            let result: T = try newDecoder.unwrap(as: T.self)
+            currentIndex += 1
+            return result
+        } catch {
+            if let error = error as? MsgPackDecodingError {
+                throw error.asDecodingError(type, codingPath: codingPath)
+            }
+            throw error
+        }
     }
 
     private mutating func decoderForNextElement<T>(ofType _: T.Type) throws -> _MsgPackDecoder {
@@ -533,9 +569,16 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
         try decodeUInt(key: key)
     }
 
-    func decode<T>(_: T.Type, forKey key: Key) throws -> T where T: Decodable {
+    func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T: Decodable {
         let newDecoder: _MsgPackDecoder = try decoderForKey(key)
-        return try newDecoder.unwrap(as: T.self)
+        do {
+            return try newDecoder.unwrap(as: T.self)
+        } catch {
+            if let error = error as? MsgPackDecodingError {
+                throw error.asDecodingError(type, codingPath: codingPath)
+            }
+            throw error
+        }
     }
 
     func nestedContainer<NestedKey>(keyedBy type: NestedKey.Type, forKey key: Key) throws -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey {

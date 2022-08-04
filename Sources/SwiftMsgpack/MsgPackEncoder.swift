@@ -22,6 +22,11 @@ open class MsgPackEncoder {
     }
 }
 
+public protocol MsgPackEncodable: Encodable {
+    func encodeMsgPack() throws -> Data
+    var type: Int8 { get }
+}
+
 private class _MsgPackEncoder: Encoder {
     public var codingPath: [CodingKey] = []
     public var userInfo: [CodingUserInfoKey: Any] = [:]
@@ -411,6 +416,8 @@ private extension _SpecialTreatmentEncoder {
         switch encodable {
         case let data as Data:
             return try wrapData(data, for: additionalKey)
+        case let msgPack as MsgPackEncodable:
+            return try wrapMsgPackEncodable(msgPack, for: additionalKey)
         default:
             try encodable.encode(to: encoder)
             let value = encoder.value
@@ -429,6 +436,57 @@ private extension _SpecialTreatmentEncoder {
         bb.append(UInt8(n))
         bb.append(contentsOf: value)
         return .literal(Data(bb))
+    }
+
+    func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
+        var d: Data = .init()
+        let data = try encodable.encodeMsgPack()
+        let n = data.count
+        switch n {
+        case 1:
+            d.append(.init([0xD4]))
+        case 2:
+            d.append(.init([0xD5]))
+        case 4:
+            d.append(.init([0xD6]))
+        case 8:
+            d.append(.init([0xD7]))
+        case 16:
+            d.append(.init([0xD8]))
+        default:
+            if n <= UInt8.max {
+                d.append(.init([0xC7]))
+                d.append(withUnsafePointer(to: UInt8(n).bigEndian) {
+                    Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
+                })
+            } else if n <= UInt16.max {
+                d.append(.init([0xC8]))
+                d.append(withUnsafePointer(to: UInt16(n).bigEndian) {
+                    Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
+                })
+            } else if n <= UInt32.max {
+                d.append(.init([0xC9]))
+                d.append(withUnsafePointer(to: UInt32(n).bigEndian) {
+                    Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
+                })
+            } else {
+                let path: [CodingKey]
+                if let additionalKey = additionalKey {
+                    path = codingPath + [additionalKey]
+                } else {
+                    path = codingPath
+                }
+                throw EncodingError.invalidValue(encodable, .init(
+                    codingPath: path,
+                    debugDescription: "Unable to encode \(type(of: encodable)).\(encodable) directly in MessagePack."
+                ))
+            }
+        }
+        d.append(withUnsafePointer(to: encodable.type.bigEndian) {
+            Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
+        })
+        d.append(data)
+        return .literal(d)
     }
 
     func getEncoder(for additionalKey: CodingKey?) -> _MsgPackEncoder {
