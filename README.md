@@ -18,10 +18,11 @@ print(out)
 // [3.14159265359: "pi", 1.41421356237: "sqrt(2)"]
 ```
 
-## Adding `SwiftMsgpack` as a Dependency
+## Installation
 
-To use the `SwiftMsgpack` library in a SwiftPM project, 
-add it to the dependencies for your package:
+### SwiftPM
+
+Add the `SwiftMsgpack` as a dependency:
 
 ```swift
 let package = Package(
@@ -40,6 +41,13 @@ let package = Package(
 )
 ```
 
+### CocoaPods
+
+Add the following to your Podfile:
+
+```terminal
+pod 'SwiftMsgpack', :git => 'https://github.com/nnabeyang/swift-msgpack.git'
+```
 ## License
 
 swift-msgpack is published under the MIT License, see LICENSE.
