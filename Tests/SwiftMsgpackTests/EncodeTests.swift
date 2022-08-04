@@ -17,6 +17,7 @@ final class EncodeTests: XCTestCase {
             try t(in: true, type: Bool.self, out: "c3")
             try t(in: SS2(a: "Hello"), type: SS2.self, out: "c7050348656c6c6f")
             try t(in: MsgPackTimestamp(seconds: 9_223_372_036_854_775_807, nanoseconds: 999_999_999), type: MsgPackTimestamp.self, out: "c70cff3b9ac9ff7fffffffffffffff")
+            try t(in: MsgPackTimestamp(seconds: -9_223_372_036_854_775_808, nanoseconds: 0), type: MsgPackTimestamp.self, out: "c70cff000000008000000000000000")
             try t(in: 0x80, type: UInt8.self, out: "cc80")
             try t(in: 0x4B6B, type: UInt16.self, out: "cd4b6b")
             try t(in: 0x4B6B34, type: UInt32.self, out: "ce004b6b34")
@@ -38,7 +39,11 @@ final class EncodeTests: XCTestCase {
             try t(in: Opacity(a: 0x3D), type: Opacity.self, out: "d4013d")
             try t(in: Position(x: 0x12, y: 0x34), type: Position.self, out: "d5021234")
             try t(in: MsgPackTimestamp(seconds: 1_655_888_192, nanoseconds: 0), type: MsgPackTimestamp.self, out: "d6ff62b2d940")
+            try t(in: MsgPackTimestamp(seconds: 4_294_967_295, nanoseconds: 0), type: MsgPackTimestamp.self, out: "d6ffffffffff")
+            try t(in: MsgPackTimestamp(seconds: 0, nanoseconds: 0), type: MsgPackTimestamp.self, out: "d6ff00000000")
             try t(in: MsgPackTimestamp(seconds: 1_655_888_192, nanoseconds: 999_999_999), type: MsgPackTimestamp.self, out: "d7ffee6b27fc62b2d940")
+            try t(in: MsgPackTimestamp(seconds: 17_179_869_183, nanoseconds: 999_999_999), type: MsgPackTimestamp.self, out: "d7ffee6b27ffffffffff")
+            try t(in: MsgPackTimestamp(seconds: 0, nanoseconds: 1), type: MsgPackTimestamp.self, out: "d7ff0000000400000000")
             try t(in: Ext16(a: [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF]), type: Ext16.self, out: "d8050123456789abcdef0123456789abcdef")
             // UnkeyedEncodingContainer
             try t(in: SS(a: ["abc", "xyz", "ddd"]), type: SS.self, out: "93a3616263a378797aa3646464")
@@ -88,8 +93,11 @@ struct All: Codable, Equatable {
     var superCodable: SuperCodable
     var ext1: Opacity
     var time32: MsgPackTimestamp
+    var time32_min: MsgPackTimestamp
     var time64: MsgPackTimestamp
+    var time64_min: MsgPackTimestamp
     var time96: MsgPackTimestamp
+    var time96_min: MsgPackTimestamp
 }
 
 extension All {
@@ -118,8 +126,11 @@ extension All {
             superCodable: .init(name: "hello", index: 3),
             ext1: .init(a: 0x46),
             time32: MsgPackTimestamp(seconds: 1_655_888_192, nanoseconds: 0),
+            time32_min: MsgPackTimestamp(seconds: 0, nanoseconds: 0),
             time64: MsgPackTimestamp(seconds: 1_655_888_192, nanoseconds: 999_999_999),
-            time96: MsgPackTimestamp(seconds: 9_223_372_036_854_775_807, nanoseconds: 999_999_999)
+            time64_min: MsgPackTimestamp(seconds: 0, nanoseconds: 1),
+            time96: MsgPackTimestamp(seconds: 9_223_372_036_854_775_807, nanoseconds: 999_999_999),
+            time96_min: MsgPackTimestamp(seconds: -9_223_372_036_854_775_808, nanoseconds: 0)
         )
     }
 }
