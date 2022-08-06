@@ -375,28 +375,28 @@ private extension _SpecialTreatmentEncoder {
     }
 
     func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackValue {
-        let n = UInt64(value.count)
+        let n = value.count
         if n <= UInt.maxUint5 {
-            var data: Data = .init([UInt8(0xA0 + n)])
-            data.append(Data(value.utf8))
-            return .literal(data)
+            var bb: [UInt8] = [UInt8(0xA0 + n)]
+            bb.append(contentsOf: value.utf8)
+            return .literal(.init(bb))
         } else if n <= UInt8.max {
-            return .literal(.init([0xD9, UInt8(n)]))
+            var bb: [UInt8] = [0xD9, UInt8(n)]
+            bb.append(contentsOf: value.utf8)
+            return .literal(.init(bb))
         } else if n <= UInt16.max {
-            var bb: [UInt8] = []
-            bb.append(0xDA)
-            let bits = withUnsafePointer(to: UInt16(n).bigEndian) {
+            var bb: [UInt8] = [0xDA]
+            bb.append(contentsOf: withUnsafePointer(to: UInt16(n).bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-            }
-            bb.append(contentsOf: bits)
+            })
+            bb.append(contentsOf: value.utf8)
             return .literal(.init(bb))
         } else if n <= UInt32.max {
-            var bb: [UInt8] = []
-            bb.append(0xDB)
-            let bits = withUnsafePointer(to: UInt32(n).bigEndian) {
+            var bb: [UInt8] = [0xDB]
+            bb.append(contentsOf: withUnsafePointer(to: UInt32(n).bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-            }
-            bb.append(contentsOf: bits)
+            })
+            bb.append(contentsOf: value.utf8)
             return .literal(.init(bb))
         }
         let path: [CodingKey]
