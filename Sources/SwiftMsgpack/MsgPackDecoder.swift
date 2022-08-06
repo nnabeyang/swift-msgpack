@@ -23,7 +23,7 @@ public protocol MsgPackDecodable: Decodable {
     init(msgPack data: Data) throws
 }
 
-typealias MsgPackCodable = MsgPackEncodable & MsgPackDecodable
+public typealias MsgPackCodable = MsgPackEncodable & MsgPackDecodable
 
 private class _MsgPackDecoder: Decoder {
     var codingPath: [CodingKey]
