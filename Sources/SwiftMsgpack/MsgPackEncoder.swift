@@ -247,12 +247,12 @@ private extension _SpecialTreatmentEncoder {
         if bits.count == 4 {
             data.append(contentsOf: [0xCA])
             data.append(bits)
-            return .literal(data)
+            return .literal(.float(data))
         }
         if bits.count == 8 {
             data.append(contentsOf: [0xCB])
             data.append(bits)
-            return .literal(data)
+            return .literal(.float(data))
         }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
@@ -272,7 +272,7 @@ private extension _SpecialTreatmentEncoder {
             let bits = withUnsafePointer(to: v.bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
             }
-            return .literal(.init(bits))
+            return .literal(.int(.init(bits)))
         }
         if Int8.min <= value, value <= Int8.max {
             let v: Int8 = .init(value)
@@ -281,7 +281,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD0])
             data.append(bits)
-            return .literal(data)
+            return .literal(.int(data))
         }
         if Int16.min <= value, value <= Int16.max {
             let v: Int16 = .init(value)
@@ -290,7 +290,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD1])
             data.append(bits)
-            return .literal(data)
+            return .literal(.int(data))
         }
         if Int32.min <= value, value <= Int32.max {
             let v: Int32 = .init(value)
@@ -299,7 +299,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD2])
             data.append(bits)
-            return .literal(data)
+            return .literal(.int(data))
         }
         if Int64.min <= value, value <= Int64.max {
             let v: Int64 = .init(value)
@@ -308,7 +308,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD3])
             data.append(bits)
-            return .literal(data)
+            return .literal(.int(data))
         }
 
         let path: [CodingKey]
@@ -325,10 +325,10 @@ private extension _SpecialTreatmentEncoder {
 
     func wrapUInt<T: UnsignedInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackValue {
         if value <= Int.fixMax {
-            return .literal(.init([UInt8(value)]))
+            return .literal(.uint(.init([UInt8(value)])))
         }
         if value <= UInt8.max {
-            return .literal(.init([0xCC, UInt8(value)]))
+            return .literal(.uint(.init([0xCC, UInt8(value)])))
         }
         if value <= UInt16.max {
             let v: UInt16 = .init(value)
@@ -337,7 +337,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xCD])
             data.append(bits)
-            return .literal(data)
+            return .literal(.uint(data))
         }
         if value <= UInt32.max {
             let v: UInt32 = .init(value)
@@ -346,7 +346,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xCE])
             data.append(bits)
-            return .literal(data)
+            return .literal(.uint(data))
         }
         if value <= UInt64.max {
             let v: UInt64 = .init(value)
@@ -355,7 +355,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xCF])
             data.append(bits)
-            return .literal(data)
+            return .literal(.uint(data))
         }
 
         let path: [CodingKey]
@@ -371,7 +371,7 @@ private extension _SpecialTreatmentEncoder {
     }
 
     func wrapBool(_ value: Bool) -> MsgPackValue {
-        .literal(.init([value ? 0xC3 : 0xC2]))
+        .literal(.bool(value))
     }
 
     func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackValue {
@@ -379,25 +379,25 @@ private extension _SpecialTreatmentEncoder {
         if n <= UInt.maxUint5 {
             var bb: [UInt8] = [UInt8(0xA0 + n)]
             bb.append(contentsOf: value.utf8)
-            return .literal(.init(bb))
+            return .literal(.str(.init(bb)))
         } else if n <= UInt8.max {
             var bb: [UInt8] = [0xD9, UInt8(n)]
             bb.append(contentsOf: value.utf8)
-            return .literal(.init(bb))
+            return .literal(.str(.init(bb)))
         } else if n <= UInt16.max {
             var bb: [UInt8] = [0xDA]
             bb.append(contentsOf: withUnsafePointer(to: UInt16(n).bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
             })
             bb.append(contentsOf: value.utf8)
-            return .literal(.init(bb))
+            return .literal(.str(.init(bb)))
         } else if n <= UInt32.max {
             var bb: [UInt8] = [0xDB]
             bb.append(contentsOf: withUnsafePointer(to: UInt32(n).bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
             })
             bb.append(contentsOf: value.utf8)
-            return .literal(.init(bb))
+            return .literal(.str(.init(bb)))
         }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
@@ -435,7 +435,7 @@ private extension _SpecialTreatmentEncoder {
         bb.append(0xC4)
         bb.append(UInt8(n))
         bb.append(contentsOf: value)
-        return .literal(Data(bb))
+        return .literal(.bin(.init(bb)))
     }
 
     func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
@@ -486,7 +486,7 @@ private extension _SpecialTreatmentEncoder {
             Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
         })
         d.append(data)
-        return .literal(d)
+        return .ext(encodable.type, d)
     }
 
     func getEncoder(for additionalKey: CodingKey?) -> _MsgPackEncoder {

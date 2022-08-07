@@ -67,33 +67,32 @@ private class _MsgPackDecoder: Decoder {
 }
 
 private extension _MsgPackDecoder {
-    func unbox(_ value: MsgPackValue, as _: Bool.Type) throws -> Bool? {
+    func unbox(_ value: MsgPackValue, as type: Bool.Type) throws -> Bool? {
         if value == .Nil {
             return nil
         }
-        if case let .literal(v) = value {
-            guard v.count == 1, let e = v.first else {
-                return nil
-            }
-            if e == 0xC2 {
-                return false
-            }
-            if e == 0xC3 {
-                return true
-            }
+        if case let .literal(.bool(v)) = value {
+            return v
         }
-        return nil
+
+        throw DecodingError.typeMismatch(type, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+        ))
     }
 
-    func unbox(_ value: MsgPackValue, as _: String.Type) throws -> String? {
+    func unbox(_ value: MsgPackValue, as type: String.Type) throws -> String? {
         if value == .Nil {
             return nil
         }
-        if case let .literal(v) = value {
+        if case let .literal(.str(v)) = value {
             return String(data: v, encoding: .utf8)
-        } else {
-            return nil
         }
+
+        throw DecodingError.typeMismatch(type, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+        ))
     }
 
     func unbox(_ value: MsgPackValue, as type: Int.Type) throws -> Int? {
@@ -148,44 +147,61 @@ private extension _MsgPackDecoder {
         if value == .Nil {
             return nil
         }
-        if case let .literal(v) = value {
+        if case let .literal(.float(v)) = value {
             return try type.init(data: v)
-        } else {
-            return nil
         }
+
+        throw DecodingError.typeMismatch(type, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+        ))
     }
 
-    func unbox(_ value: MsgPackValue, as _: Data.Type) throws -> Data? {
+    func unbox(_ value: MsgPackValue, as type: Data.Type) throws -> Data? {
         if value == .Nil {
             return nil
         }
-        if case let .literal(v) = value {
+        if case let .literal(.bin(v)) = value {
             return v
-        } else {
-            return nil
         }
+
+        throw DecodingError.typeMismatch(type, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+        ))
     }
 
     func unboxInt<T: SignedInteger>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
         if value == .Nil {
             return nil
         }
-        if case let .literal(v) = value {
-            return type.init(try bigEndianInt(v))
-        } else {
-            return nil
+        if case let .literal(vv) = value {
+            switch vv {
+            case .uint, .int:
+                return type.init(try bigEndianInt(vv.data))
+            default:
+                break
+            }
         }
+
+        throw DecodingError.typeMismatch(type, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+        ))
     }
 
     func unboxUInt<T: UnsignedInteger>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
         if value == .Nil {
             return nil
         }
-        if case let .literal(v) = value {
+        if case let .literal(.uint(v)) = value {
             return try type.init(bigEndianUInt(v))
-        } else {
-            return nil
         }
+
+        throw DecodingError.typeMismatch(type, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+        ))
     }
 
     func unbox<T: Decodable>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
@@ -213,7 +229,7 @@ extension _MsgPackDecoder {
     }
 
     func unwrapData() throws -> Data {
-        guard case let .literal(v) = value else {
+        guard case let .literal(.bin(v)) = value else {
             throw DecodingError.typeMismatch(Data.self, DecodingError.Context(codingPath: codingPath, debugDescription: ""))
         }
         return v

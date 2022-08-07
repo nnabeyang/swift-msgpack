@@ -1,12 +1,109 @@
 import Foundation
 
+enum MsgPackValueLiteralType {
+    case `nil`
+    case bool(Bool)
+    case int(Data)
+    case uint(Data)
+    case float(Data)
+    case str(Data)
+    case bin(Data)
+    var data: Data {
+        switch self {
+        case .nil:
+            return .init([0xC0])
+        case let .bool(v):
+            return v ? .init([0xC3]) : .init([0xC2])
+        case let .int(v):
+            return v
+        case let .uint(v):
+            return v
+        case let .float(v):
+            return v
+        case let .str(v):
+            return v
+        case let .bin(v):
+            return v
+        }
+    }
+}
+
+extension MsgPackValueLiteralType {
+    var debugDataTypeDescription: String {
+        switch self {
+        case .nil:
+            return "nil"
+        case .bool:
+            return "bool"
+        case .int:
+            return "int"
+        case .uint:
+            return "uint"
+        case .float:
+            return "float"
+        case .str:
+            return "str"
+        case .bin:
+            return "bin"
+        }
+    }
+}
+
+extension MsgPackValueLiteralType: Hashable {
+    static func == (lhs: MsgPackValueLiteralType, rhs: MsgPackValueLiteralType) -> Bool {
+        switch (lhs, rhs) {
+        case (.nil, .nil):
+            return true
+        case let (.bool(l), .bool(r)):
+            return l == r
+        case let (.int(l), .int(r)):
+            return l == r
+        case let (.uint(l), .uint(r)):
+            return l == r
+        case let (.float(l), .float(r)):
+            return l == r
+        case let (.str(l), .str(r)):
+            return l == r
+        case let (.bin(l), .bin(r)):
+            return l == r
+        default:
+            return false
+        }
+    }
+
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .nil:
+            hasher.combine(0x1)
+        case let .bool(v):
+            hasher.combine(0x2)
+            hasher.combine(v)
+        case let .int(v):
+            hasher.combine(0x3)
+            hasher.combine(v)
+        case let .uint(v):
+            hasher.combine(0x4)
+            hasher.combine(v)
+        case let .float(v):
+            hasher.combine(0x5)
+            hasher.combine(v)
+        case let .str(v):
+            hasher.combine(0x6)
+            hasher.combine(v)
+        case let .bin(v):
+            hasher.combine(0x7)
+            hasher.combine(v)
+        }
+    }
+}
+
 indirect enum MsgPackValue {
     case none
-    case literal(Data)
+    case literal(MsgPackValueLiteralType)
     case ext(Int8, Data)
     case array([MsgPackValue])
     case map([MsgPackValue], [MsgPackValue: MsgPackValue])
-    static let Nil = literal(.init([0xC0]))
+    static let Nil = literal(.nil)
 }
 
 extension MsgPackValue {
@@ -109,7 +206,7 @@ extension MsgPackValue {
 
 extension MsgPackValue: ExpressibleByStringLiteral {
     init(stringLiteral value: String) {
-        self = .literal(Data(value.utf8))
+        self = .literal(.str(Data(value.utf8)))
     }
 }
 
@@ -118,8 +215,8 @@ extension MsgPackValue {
         switch self {
         case .none:
             return "none"
-        case .literal:
-            return "a literal"
+        case let .literal(v):
+            return v.debugDataTypeDescription
         case .ext:
             return "a extension"
         case .array:
@@ -177,7 +274,15 @@ extension MsgPackValue {
 
         private func writeValue(_ value: MsgPackValue, into bytes: inout [UInt8]) {
             switch value {
-            case let .literal(data):
+            case let .literal(v):
+                let data = v.data
+                let bs: [UInt8] = data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) -> [UInt8] in
+                    let unsafeBufferPointer = pointer.bindMemory(to: UInt8.self)
+                    let unsafePointer = unsafeBufferPointer.baseAddress!
+                    return [UInt8](UnsafeBufferPointer(start: unsafePointer, count: data.count))
+                }
+                bytes.append(contentsOf: bs)
+            case let .ext(_, data):
                 let bs: [UInt8] = data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) -> [UInt8] in
                     let unsafeBufferPointer = pointer.bindMemory(to: UInt8.self)
                     let unsafePointer = unsafeBufferPointer.baseAddress!
@@ -326,10 +431,14 @@ class MsgPackScanner {
     private func literal(_ item: Data, _ v: inout MsgPackValue) {
         let c = item.first!
         switch c {
-        case 0xC0, 0xC2, 0xC3: // nil, false, true
-            v = .literal(item)
+        case 0xC0: // nil
+            v = .literal(.nil)
+        case 0xC2: // false
+            v = .literal(.bool(false))
+        case 0xC3: // true
+            v = .literal(.bool(true))
         case 0xC4, 0xC5, 0xC6: // bin8, bin16, bin32
-            v = .literal(item.dropFirst(1 + (1 << (c - 0xC4))))
+            v = .literal(.bin(item.dropFirst(1 + (1 << (c - 0xC4)))))
         case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
             let nn = 1 + 1 << (c - 0xC7)
             let dd = [UInt8](item)
@@ -337,13 +446,13 @@ class MsgPackScanner {
             let typeNo = Int8(bigEndian: Data([dd[nn]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
             v = .ext(typeNo, .init(dd[nn + 1 ..< n]))
             return
-        case 0xCA, 0xCB:
-            v = .literal(item.dropFirst(1))
+        case 0xCA, 0xCB: // float 32, float 64
+            v = .literal(.float(item.dropFirst(1)))
         case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
-            v = .literal(item.dropFirst(1))
+            v = .literal(.uint(item.dropFirst(1)))
             return
         case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
-            v = .literal(item.dropFirst(1))
+            v = .literal(.int(item.dropFirst(1)))
             return
         case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 2, fixext 4, fixext 8
             let dd = [UInt8](item)
@@ -352,18 +461,18 @@ class MsgPackScanner {
             v = .ext(typeNo, .init(dd[2 ..< n]))
             return
         case 0xD9, 0xDA, 0xDB: // str8, str16, str32
-            v = .literal(item.dropFirst(1 + (1 << (c - 0xD9))))
+            v = .literal(.str(item.dropFirst(1 + (1 << (c - 0xD9)))))
         default:
             if item.count == 1, c & 0xE0 == 0xE0 { // negative fixint
-                v = .literal(item)
+                v = .literal(.int(item))
                 return
             }
             if c & 0xA0 == 0xA0 { // fixstr
-                v = .literal(item.dropFirst(1))
+                v = .literal(.str(item.dropFirst(1)))
                 return
             }
             if item.count == 1, c & 0x80 == 0 { // fixint
-                v = .literal(item)
+                v = .literal(.uint(item))
                 return
             }
         }

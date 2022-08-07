@@ -3,9 +3,20 @@ import XCTest
 
 final class DecodeTests: XCTestCase {
     let decoder: MsgPackDecoder = .init()
-    private func t<X: Decodable & Equatable>(in input: String, type: X.Type, out: X) throws {
-        let actual = try decoder.decode(type, from: Data(hex: input))
-        XCTAssertEqual(actual, out)
+    private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil) throws {
+        do {
+            let actual = try decoder.decode(typ, from: Data(hex: input))
+            if errorType != nil {
+                XCTFail()
+                return
+            }
+            XCTAssertEqual(actual, out)
+        } catch {
+            guard let errorType = errorType else {
+                throw error
+            }
+            XCTAssertTrue(type(of: error) == errorType)
+        }
     }
 
     func testDecode() throws {
@@ -70,6 +81,13 @@ final class DecodeTests: XCTestCase {
             try t(in: "92921234925678", type: UIS2.self, out: UIS2(a: [[0x12, 0x34], [0x56, 0x78]]))
             // nestedContainer
             try t(in: "9282a15812a1593482a15812a15934", type: Pairs.self, out: Pairs(a: [.init(X: 0x12, Y: 0x34), .init(X: 0x12, Y: 0x34)]))
+            // typeMismatch
+            try t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
+            try t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
+            try t(in: "c3", type: Double.self, out: 1.0, errorType: DecodingError.self)
+            try t(in: "c3", type: String.self, out: "", errorType: DecodingError.self)
+            try t(in: "c3", type: Data.self, out: .init(), errorType: DecodingError.self)
+            try t(in: "7f", type: Bool.self, out: true, errorType: DecodingError.self)
         } catch {
             XCTFail(error.localizedDescription)
         }
