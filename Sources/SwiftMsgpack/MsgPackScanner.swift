@@ -135,6 +135,12 @@ extension MsgPackValue: Hashable {
         switch (lhs, rhs) {
         case let (.literal(l), .literal(r)):
             return l == r
+        case let (.ext(ln, l), .ext(rn, r)):
+            return ln == rn && l == r
+        case let (.array(l), .array(r)):
+            return l == r
+        case let (.map(_, l), .map(_, r)):
+            return l == r
         default:
             return false
         }
