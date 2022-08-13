@@ -101,8 +101,6 @@ final class DecodeTests: XCTestCase {
     }
 
     func testEncode() throws {
-        let encoder = MsgPackEncoder()
-        let decoder: MsgPackDecoder = .init()
         let data = try encoder.encode(All.value)
         let actual = try decoder.decode(All.self, from: data)
         XCTAssertEqual(actual, All.value)
