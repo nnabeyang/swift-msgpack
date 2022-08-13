@@ -3,6 +3,7 @@ import XCTest
 
 final class DecodeTests: XCTestCase {
     let decoder: MsgPackDecoder = .init()
+    let encoder: MsgPackEncoder = .init()
     private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil) throws {
         do {
             let actual = try decoder.decode(typ, from: Data(hex: input))
@@ -17,6 +18,12 @@ final class DecodeTests: XCTestCase {
             }
             XCTAssertTrue(type(of: error) == errorType)
         }
+    }
+
+    private func t2(in input: [AnyCodable: AnyCodable]) throws {
+        let data = try encoder.encode(input)
+        let out = try decoder.decode([AnyCodable: AnyCodable].self, from: data)
+        XCTAssertEqual(out, input)
     }
 
     func testDecode() throws {
@@ -99,6 +106,17 @@ final class DecodeTests: XCTestCase {
         let data = try encoder.encode(All.value)
         let actual = try decoder.decode(All.self, from: data)
         XCTAssertEqual(actual, All.value)
+    }
+
+    func testAnyCodable() throws {
+        let input1: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init("pi"), .init(Data("key".utf8)): .init(0x34)]
+        try t2(in: input1)
+        let a: [AnyCodable] = [.init("one"), .init("two"), .init("three")]
+        let input2: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init(a), .init(Data("key".utf8)): .init(0x34)]
+        try t2(in: input2)
+        let m: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init("pi"), .init(Data("key".utf8)): .init(0x34)]
+        let input3: [AnyCodable: AnyCodable] = [.init(12): .init(12.0), .init(Data("key".utf8)): .init(m)]
+        try t2(in: input3)
     }
 }
 

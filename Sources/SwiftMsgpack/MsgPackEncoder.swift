@@ -414,6 +414,20 @@ private extension _SpecialTreatmentEncoder {
     func wrapEncodable<E: Encodable>(_ encodable: E, for additionalKey: CodingKey?) throws -> MsgPackValue? {
         let encoder = getEncoder(for: additionalKey)
         switch encodable {
+        case let anyValue as AnyCodable:
+            switch anyValue.base {
+            case let data as Data:
+                return try wrapData(data, for: additionalKey)
+            case let msgPack as MsgPackEncodable:
+                return try wrapMsgPackEncodable(msgPack, for: additionalKey)
+            default:
+                try anyValue.encode(to: encoder)
+                let value = encoder.value
+                if (anyValue.base as? _MsgPackDictionaryEncodableMarker) != nil {
+                    return value?.asMap()
+                }
+                return value
+            }
         case let data as Data:
             return try wrapData(data, for: additionalKey)
         case let msgPack as MsgPackEncodable:
