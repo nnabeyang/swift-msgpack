@@ -165,20 +165,6 @@ private extension _MsgPackDecoder {
         ))
     }
 
-    func unbox(_ value: MsgPackValue, as type: Data.Type) throws -> Data? {
-        if value == .Nil {
-            return nil
-        }
-        if case let .literal(.bin(v)) = value {
-            return v
-        }
-
-        throw DecodingError.typeMismatch(type, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
-        ))
-    }
-
     func unboxInt<T: SignedInteger>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
         if value == .Nil {
             return nil
@@ -210,23 +196,6 @@ private extension _MsgPackDecoder {
             codingPath: codingPath,
             debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
         ))
-    }
-
-    func unbox<T: Decodable>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
-        try unbox_(value, as: type) as? T
-    }
-
-    func unbox_<T: Decodable>(_ value: MsgPackValue, as type: T.Type) throws -> Any? {
-        if type == Data.self || type == NSData.self {
-            return try unbox(value, as: Data.self)
-        }
-        if T.self is _MsgPackDictionaryDecodableMarker.Type {
-            try checkDictionay(as: T.self)
-        }
-        if T.self is _MsgPackArrayDecodableMarker.Type {
-            try checkArray(as: T.self)
-        }
-        return try T(from: self)
     }
 }
 
@@ -363,7 +332,7 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
     }
 
     func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
-        try decoder.unbox(value, as: type)!
+        try decoder.unwrap(as: type)
     }
 }
 
