@@ -1,5 +1,13 @@
 import Foundation
 
+private protocol _MsgPackDictionaryDecodableMarker {}
+
+extension Dictionary: _MsgPackDictionaryDecodableMarker where Key: Encodable, Value: Decodable {}
+
+private protocol _MsgPackArrayDecodableMarker {}
+
+extension Array: _MsgPackArrayDecodableMarker where Element: Decodable {}
+
 open class MsgPackDecoder {
     public init() {}
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
@@ -212,6 +220,12 @@ private extension _MsgPackDecoder {
         if type == Data.self || type == NSData.self {
             return try unbox(value, as: Data.self)
         }
+        if T.self is _MsgPackDictionaryDecodableMarker.Type {
+            try checkDictionay(as: T.self)
+        }
+        if T.self is _MsgPackArrayDecodableMarker.Type {
+            try checkArray(as: T.self)
+        }
         return try T(from: self)
     }
 }
@@ -224,6 +238,12 @@ extension _MsgPackDecoder {
         if let type = type as? MsgPackDecodable.Type {
             let value = try unwrapMsgPackDecodable(as: type)
             return value as! T
+        }
+        if T.self is _MsgPackDictionaryDecodableMarker.Type {
+            try checkDictionay(as: T.self)
+        }
+        if T.self is _MsgPackArrayDecodableMarker.Type {
+            try checkArray(as: T.self)
         }
         return try T(from: self)
     }
@@ -244,6 +264,30 @@ extension _MsgPackDecoder {
             throw DecodingError.dataCorrupted(DecodingError.Context(codingPath: codingPath, debugDescription: "extension type number mismatch: expected: \(value.type) got: \(typeNo)"))
         }
         return value
+    }
+
+    private func checkDictionay<T: Decodable>(as _: T.Type) throws {
+        guard (T.self as? (_MsgPackDictionaryDecodableMarker & Decodable).Type) != nil else {
+            preconditionFailure("Must only be called of T implements _MsgPackDictionaryDecodableMarker")
+        }
+        guard case .map = value else {
+            throw DecodingError.typeMismatch([MsgPackValue: MsgPackValue].self, DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \([MsgPackValue: MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
+            ))
+        }
+    }
+
+    private func checkArray<T: Decodable>(as _: T.Type) throws {
+        guard (T.self as? (_MsgPackArrayDecodableMarker & Decodable).Type) != nil else {
+            preconditionFailure("Must only be called of T implements _MsgPackArrayDecodableMarker")
+        }
+        guard case .array = value else {
+            throw DecodingError.typeMismatch([MsgPackValue].self, DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \([MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
+            ))
+        }
     }
 }
 

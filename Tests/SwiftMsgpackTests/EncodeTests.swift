@@ -135,18 +135,18 @@ extension All {
     }
 }
 
-class Small: Codable, Equatable {
+class Small: Codable, Hashable {
     static func == (lhs: Small, rhs: Small) -> Bool {
         lhs.tag == rhs.tag
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(tag)
     }
 
     var tag: String
     init(tag: String) {
         self.tag = tag
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case tag
     }
 
     func encode(to encoder: Encoder) throws {
