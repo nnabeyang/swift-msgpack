@@ -143,9 +143,12 @@ extension AnyCodable: Decodable {
     }
 }
 
-extension AnyCodable: CustomStringConvertible {
-    public var description: String {
-        "AnyCodable(\(base))"
+extension AnyCodable: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        guard let base = base as? CustomDebugStringConvertible else {
+            return "AnyCodable(\(base))"
+        }
+        return "AnyCodable(\(base.debugDescription))"
     }
 }
 
