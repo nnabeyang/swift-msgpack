@@ -442,7 +442,7 @@ private extension _SpecialTreatmentEncoder {
         }
     }
 
-    func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackValue {
+    private func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackValue {
         let value = [UInt8](data)
         let n = value.count
         var bb: [UInt8] = []
@@ -452,7 +452,7 @@ private extension _SpecialTreatmentEncoder {
         return .literal(.bin(.init(bb)))
     }
 
-    func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    private func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
         var d: Data = .init()
         let data = try encodable.encodeMsgPack()
         let n = data.count
@@ -682,15 +682,15 @@ private struct MsgPackUnkeyedEncodingContainer: UnkeyedEncodingContainer {
         array.append(encoded ?? .Nil)
     }
 
-    func encodeUInt<T: UnsignedInteger>(_ value: T) throws {
+    private func encodeUInt<T: UnsignedInteger>(_ value: T) throws {
         array.append(try encoder.wrapUInt(value, for: nil))
     }
 
-    func encodeInt<T: SignedInteger>(_ value: T) throws {
+    private func encodeInt<T: SignedInteger>(_ value: T) throws {
         array.append(try encoder.wrapInt(value, for: nil))
     }
 
-    func encodeFloat<T: FloatingPoint & DataNumber>(_ value: T) throws {
+    private func encodeFloat<T: FloatingPoint & DataNumber>(_ value: T) throws {
         array.append(try encoder.wrapFloat(value, for: nil))
     }
 
@@ -837,7 +837,7 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
         map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
     }
 
-    func encodeUInt<T: UnsignedInteger>(_ value: T, forKey key: Key) throws {
+    private func encodeUInt<T: UnsignedInteger>(_ value: T, forKey key: Key) throws {
         let value = try encoder.wrapUInt(value, for: key)
         map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
     }
