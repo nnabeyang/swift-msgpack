@@ -133,6 +133,7 @@ final class DecodeTests: XCTestCase {
         let input2: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init(a), .init(Data("key".utf8)): .init(0x34)]
         try t2(in: input2)
         let m: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init("pi"), .init(Data("key".utf8)): .init(0x34)]
+
         let input3: [AnyCodable: AnyCodable] = [.init(12): .init(12.0), .init(Data("key".utf8)): .init(m)]
         try t2(in: input3)
     }

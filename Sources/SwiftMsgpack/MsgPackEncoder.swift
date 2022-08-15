@@ -414,35 +414,27 @@ private extension _SpecialTreatmentEncoder {
     func wrapEncodable<E: Encodable>(_ encodable: E, for additionalKey: CodingKey?) throws -> MsgPackValue? {
         let encoder = getEncoder(for: additionalKey)
         switch encodable {
-        case let anyValue as AnyCodable:
-            switch anyValue.base {
-            case let data as Data:
-                return try wrapData(data, for: additionalKey)
-            case let msgPack as MsgPackEncodable:
-                return try wrapMsgPackEncodable(msgPack, for: additionalKey)
-            default:
-                try anyValue.encode(to: encoder)
-                let value = encoder.value
-                if (anyValue.base as? _MsgPackDictionaryEncodableMarker) != nil {
-                    return value?.asMap()
-                }
-                return value
-            }
         case let data as Data:
             return try wrapData(data, for: additionalKey)
         case let msgPack as MsgPackEncodable:
             return try wrapMsgPackEncodable(msgPack, for: additionalKey)
         default:
             try encodable.encode(to: encoder)
-            let value = encoder.value
-            if (encodable as? _MsgPackDictionaryEncodableMarker) != nil {
-                return value?.asMap()
-            }
-            return value
         }
+
+        if let anyCodable = encodable as? AnyCodable {
+            if anyCodable.base as? _MsgPackDictionaryEncodableMarker != nil {
+                return encoder.value?.asMap()
+            }
+        } else {
+            if (encodable as? _MsgPackDictionaryEncodableMarker) != nil {
+                return encoder.value?.asMap()
+            }
+        }
+        return encoder.value
     }
 
-    private func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackValue {
+    func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackValue {
         let value = [UInt8](data)
         let n = value.count
         var bb: [UInt8] = []
@@ -452,7 +444,7 @@ private extension _SpecialTreatmentEncoder {
         return .literal(.bin(.init(bb)))
     }
 
-    private func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
         var d: Data = .init()
         let data = try encodable.encodeMsgPack()
         let n = data.count
@@ -512,7 +504,7 @@ private extension _SpecialTreatmentEncoder {
     }
 }
 
-private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer {
+private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer, _SpecialTreatmentEncoder {
     let encoder: _MsgPackEncoder
     let codingPath: [CodingKey]
 
@@ -582,7 +574,7 @@ private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer
     }
 
     public func encode<T>(_ value: T) throws where T: Encodable {
-        try value.encode(to: encoder)
+        encoder.singleValue = try wrapEncodable(value, for: nil)
     }
 
     @inline(__always)

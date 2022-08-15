@@ -170,7 +170,8 @@ internal protocol _AnyBaseBox {
 
 extension _ConcreateCodableBox: _AnyBaseBox where Base: Encodable {
     func _encode(to encoder: Encoder) throws {
-        try _baseCodableKey.encode(to: encoder)
+        var container = encoder.singleValueContainer()
+        try container.encode(_baseCodableKey)
     }
 }
 
