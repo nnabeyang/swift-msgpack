@@ -169,23 +169,23 @@ private extension Data {
 }
 
 struct Pair: Codable, Equatable {
-    var X: UInt8
-    var Y: UInt8
+    let X: UInt8
+    let Y: UInt8
 }
 
 struct PairInt: Codable, Equatable {
-    var X: Int8
-    var Y: Int8
+    let X: Int8
+    let Y: Int8
 }
 
 struct PairStr: Codable, Equatable {
-    var X: String
-    var Y: String
+    let X: String
+    let Y: String
 }
 
 struct PairArray: Codable, Equatable {
-    var X: UInt8
-    var Y: UInt8
+    let X: UInt8
+    let Y: UInt8
     init(X: UInt8, Y: UInt8) {
         self.X = X
         self.Y = Y
@@ -205,7 +205,7 @@ struct PairArray: Codable, Equatable {
 }
 
 struct SS: Codable, Equatable {
-    var a: [String]
+    let a: [String]
     init(a: [String]) {
         self.a = a
     }
@@ -218,33 +218,35 @@ struct SS: Codable, Equatable {
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var b = [String]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
             let element = try container.decode(String.self)
-            a.append(element)
+            b.append(element)
         }
+        a = b
     }
 }
 
 private struct UIS: Decodable, Equatable {
-    var a: [UInt8]
+    let a: [UInt8]
     init(a: [UInt8]) {
         self.a = a
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var b = [UInt8]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
             let element = try container.decode(UInt8.self)
-            a.append(element)
+            b.append(element)
         }
+        a = b
     }
 }
 
 struct IS: Codable, Equatable {
-    var a: [Int8]
+    let a: [Int8]
     init(a: [Int8]) {
         self.a = a
     }
@@ -257,28 +259,30 @@ struct IS: Codable, Equatable {
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var b = [Int8]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
             let element = try container.decode(Int8.self)
-            a.append(element)
+            b.append(element)
         }
+        a = b
     }
 }
 
 struct FS: Codable, Equatable {
-    var a: [Float]
+    let a: [Float]
     init(a: [Float]) {
         self.a = a
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var b = [Float]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
             let element = try container.decode(Float.self)
-            a.append(element)
+            b.append(element)
         }
+        a = b
     }
 
     func encode(to encoder: Encoder) throws {
@@ -290,18 +294,19 @@ struct FS: Codable, Equatable {
 }
 
 struct BS: Codable, Equatable {
-    var a: [Bool]
+    let a: [Bool]
     init(a: [Bool]) {
         self.a = a
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var b = [Bool]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
             let element = try container.decode(Bool.self)
-            a.append(element)
+            b.append(element)
         }
+        a = b
     }
 
     func encode(to encoder: Encoder) throws {
@@ -313,13 +318,13 @@ struct BS: Codable, Equatable {
 }
 
 private struct UIS2: Codable, Equatable {
-    var a: [[UInt8]]
+    let a: [[UInt8]]
     init(a: [[UInt8]]) {
         self.a = a
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var c = [[UInt8]]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
             var b: [UInt8] = []
@@ -328,8 +333,9 @@ private struct UIS2: Codable, Equatable {
                 let element = try nestedContainer.decode(UInt8.self)
                 b.append(element)
             }
-            a.append(b)
+            c.append(b)
         }
+        a = c
     }
 
     func encode(to encoder: Encoder) throws {
@@ -344,14 +350,14 @@ private struct UIS2: Codable, Equatable {
 }
 
 private struct Pairs: Decodable, Equatable {
-    var a: [Pair]
+    let a: [Pair]
     init(a: [Pair]) {
         self.a = a
     }
 
     struct Pair: Codable, Equatable {
-        var X: UInt8
-        var Y: UInt8
+        let X: UInt8
+        let Y: UInt8
         enum CodingKeys: CodingKey {
             case X
             case Y
@@ -359,14 +365,14 @@ private struct Pairs: Decodable, Equatable {
     }
 
     init(from decoder: Decoder) throws {
-        a = []
+        var b = [Pair]()
         var container = try decoder.unkeyedContainer()
         while !container.isAtEnd {
-            var b: Pair = .init(X: 0, Y: 0)
             let values = try container.nestedContainer(keyedBy: Pair.CodingKeys.self)
-            b.X = try values.decode(UInt8.self, forKey: .X)
-            b.Y = try values.decode(UInt8.self, forKey: .Y)
-            a.append(b)
+            let x = try values.decode(UInt8.self, forKey: .X)
+            let y = try values.decode(UInt8.self, forKey: .Y)
+            b.append(.init(X: x, Y: y))
         }
+        a = b
     }
 }

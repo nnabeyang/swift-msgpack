@@ -70,34 +70,34 @@ extension Data {
 }
 
 struct All: Codable, Equatable {
-    var bool: Bool
-    var int: Int
-    var int8: Int8
-    var int16: Int16
-    var int32: Int32
-    var int64: Int64
-    var uint: UInt
-    var uint8: UInt8
-    var uint16: UInt16
-    var uint32: UInt32
-    var uint64: UInt64
-    var float: Float
-    var double: Double
-    var string: String
-    var map: [String: Small]
-    var mapP: [String: Small?]
-    var floatMap: [Float: String]
-    var nilArray: [String]?
-    var emptyArray: [Small]
-    var bytes: Data
-    var superCodable: SuperCodable
-    var ext1: Opacity
-    var time32: MsgPackTimestamp
-    var time32_min: MsgPackTimestamp
-    var time64: MsgPackTimestamp
-    var time64_min: MsgPackTimestamp
-    var time96: MsgPackTimestamp
-    var time96_min: MsgPackTimestamp
+    let bool: Bool
+    let int: Int
+    let int8: Int8
+    let int16: Int16
+    let int32: Int32
+    let int64: Int64
+    let uint: UInt
+    let uint8: UInt8
+    let uint16: UInt16
+    let uint32: UInt32
+    let uint64: UInt64
+    let float: Float
+    let double: Double
+    let string: String
+    let map: [String: Small]
+    let mapP: [String: Small?]
+    let floatMap: [Float: String]
+    let nilArray: [String]?
+    let emptyArray: [Small]
+    let bytes: Data
+    let superCodable: SuperCodable
+    let ext1: Opacity
+    let time32: MsgPackTimestamp
+    let time32_min: MsgPackTimestamp
+    let time64: MsgPackTimestamp
+    let time64_min: MsgPackTimestamp
+    let time96: MsgPackTimestamp
+    let time96_min: MsgPackTimestamp
 }
 
 extension All {
@@ -144,7 +144,7 @@ class Small: Codable, Hashable {
         hasher.combine(tag)
     }
 
-    var tag: String
+    let tag: String
     init(tag: String) {
         self.tag = tag
     }
@@ -156,7 +156,7 @@ class Small: Codable, Hashable {
 }
 
 class Name: Codable {
-    var name: String
+    let name: String
     init(name: String) {
         self.name = name
     }
@@ -172,7 +172,7 @@ class Name: Codable {
 }
 
 class SuperCodable: Name {
-    var index: Int
+    let index: Int
 
     private enum CodingKeys: String, CodingKey {
         case index
@@ -207,7 +207,7 @@ extension SuperCodable: Equatable {
 }
 
 struct Opacity: Equatable {
-    private var a: UInt8
+    private let a: UInt8
     init(a: UInt8) {
         self.a = a
     }
@@ -225,8 +225,8 @@ extension Opacity: MsgPackCodable {
 }
 
 struct Position: MsgPackEncodable {
-    private var x: UInt8
-    private var y: UInt8
+    private let x: UInt8
+    private let y: UInt8
     init(x: UInt8, y: UInt8) {
         self.x = x
         self.y = y
@@ -236,11 +236,11 @@ struct Position: MsgPackEncodable {
         .init([x, y])
     }
 
-    var type: Int8 = 2
+    let type: Int8 = 2
 }
 
 struct SS2: MsgPackEncodable {
-    private var a: String
+    private let a: String
     init(a: String) {
         self.a = a
     }
@@ -249,11 +249,11 @@ struct SS2: MsgPackEncodable {
         Data(a.utf8)
     }
 
-    var type: Int8 = 3
+    let type: Int8 = 3
 }
 
 struct Ext16: MsgPackEncodable {
-    private var a: [UInt8]
+    private let a: [UInt8]
     init(a: [UInt8]) {
         self.a = a
     }
@@ -262,5 +262,5 @@ struct Ext16: MsgPackEncodable {
         .init(a)
     }
 
-    var type: Int8 = 5
+    let type: Int8 = 5
 }

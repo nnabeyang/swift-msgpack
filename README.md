@@ -8,14 +8,14 @@ swift-msgpack is a library of MessagePack encoder & decoder for Swift based on C
 import SwiftMsgpack
 
 struct Coordinate: Codable {
-    var latitude: Double
-    var longitude: Double
+    let latitude: Double
+    let longitude: Double
 }
 
 struct Landmark: Codable {
-    var name: String
-    var foundingYear: Int
-    var location: Coordinate
+    let name: String
+    let foundingYear: Int
+    let location: Coordinate
 }
 
 let input = Landmark(
