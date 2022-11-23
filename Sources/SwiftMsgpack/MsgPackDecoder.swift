@@ -473,14 +473,21 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     private let decoder: _MsgPackDecoder
     private(set) var codingPath: [CodingKey]
-    private(set) var allKeys: [Key]
     private var container: MsgPackValue
 
     init(referencing decoder: _MsgPackDecoder, container: MsgPackValue) {
         self.decoder = decoder
         self.container = container
-        allKeys = container.keys.compactMap { Key(stringValue: try! decoder.unbox($0, as: String.self)!) }
         codingPath = decoder.codingPath
+    }
+
+    var allKeys: [Key] {
+        container.keys.compactMap {
+            guard let stringValue = try? decoder.unbox($0, as: String.self) else {
+                return nil
+            }
+            return Key(stringValue: stringValue)
+        }
     }
 
     func contains(_ key: Key) -> Bool {

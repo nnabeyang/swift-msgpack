@@ -137,6 +137,44 @@ final class DecodeTests: XCTestCase {
         let input3: [AnyCodable: AnyCodable] = [.init(12): .init(12.0), .init(Data("key".utf8)): .init(m)]
         try t2(in: input3)
     }
+
+    func testMsgPackKeyedDecodingContainerAllKeys() throws {
+        let input: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init("pi"), .init("key"): .init(0x34)]
+        let data = try encoder.encode(input)
+        let dict = try decoder.decode(DictionaryWrapper.self, from: data).dict
+        XCTAssertEqual(dict.count, 1)
+        XCTAssertEqual(dict["key"], AnyCodable(0x34))
+    }
+}
+
+private struct AnyCodingKeys: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+
+    init(stringValue: String) { self.stringValue = stringValue }
+
+    init(intValue: Int) {
+        stringValue = String(intValue)
+        self.intValue = intValue
+    }
+}
+
+private struct DictionaryWrapper: Decodable, Equatable {
+    let dict: [String: AnyCodable]
+
+    init(from decoder: Decoder) throws {
+        var d: [String: AnyCodable] = [:]
+        let container = try decoder.container(keyedBy: AnyCodingKeys.self)
+        for key in container.allKeys {
+            if let stringValue = try? container.decode(String.self, forKey: key) {
+                d[key.stringValue] = .init(stringValue)
+            }
+            if let intValue = try? container.decode(Int.self, forKey: key) {
+                d[key.stringValue] = .init(intValue)
+            }
+        }
+        dict = d
+    }
 }
 
 private extension UnicodeScalar {
