@@ -84,6 +84,7 @@ struct All: Codable, Equatable {
     let float: Float
     let double: Double
     let string: String
+    let stringM: String
     let map: [String: Small]
     let mapP: [String: Small?]
     let floatMap: [Float: String]
@@ -117,6 +118,7 @@ extension All {
             float: 2.34,
             double: Double(Float.greatestFiniteMagnitude) * 2.0,
             string: "Hello",
+            stringM: "こんにちは",
             map: ["17": .init(tag: "tag17"), "18": .init(tag: "tag18")],
             mapP: ["19": .init(tag: "tag19"), "20": nil],
             floatMap: [1.41: "sqrt(2)", 3.14: "pi"],

@@ -375,7 +375,7 @@ private extension _SpecialTreatmentEncoder {
     }
 
     func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackValue {
-        let n = value.count
+        let n = value.utf8.count
         if n <= UInt.maxUint5 {
             var bb: [UInt8] = [UInt8(0xA0 + n)]
             bb.append(contentsOf: value.utf8)
