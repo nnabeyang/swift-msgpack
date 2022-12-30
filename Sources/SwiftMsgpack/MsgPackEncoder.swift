@@ -835,23 +835,6 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
     }
 }
 
-extension MsgPackKeyedEncodingContainer {
-    public mutating func encodeIfPresent<T: Encodable>(
-        _ value: T?,
-        forKey key: Key
-    ) throws {
-        let keyValue = try! encoder.wrapString(key.stringValue, for: key)
-        switch value {
-        case let .some(v):
-            let value = try encoder.wrapEncodable(v, for: key)!
-
-            map.set(value, for: keyValue)
-        case .none:
-            map.set(.Nil, for: keyValue)
-        }
-    }
-}
-
 internal struct MsgPackKey: CodingKey {
     public var stringValue: String
     public var intValue: Int?
