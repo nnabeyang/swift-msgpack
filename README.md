@@ -96,7 +96,7 @@ let package = Package(
 Add the following to your Podfile:
 
 ```terminal
-pod 'SwiftMsgpack', :git => 'https://github.com/nnabeyang/swift-msgpack.git'
+pod 'SwiftMessagePack'
 ```
 ## License
 
