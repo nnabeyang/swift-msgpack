@@ -40,6 +40,7 @@ final class DecodeTests: XCTestCase {
             try t(in: "7f", type: Int.self, out: 0x7F)
             try t(in: "82a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
             try t(in: "82a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
+            try t(in: "81ab656d7074795f617272617990", type: [String: [String]].self, out: ["empty_array": []])
             try t(in: "93123456", type: [UInt8].self, out: [0x12, 0x34, 0x56])
             try t(in: "921234", type: PairArray.self, out: PairArray(X: 0x12, Y: 0x34))
             try t(in: "93a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])

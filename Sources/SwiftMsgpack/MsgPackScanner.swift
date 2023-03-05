@@ -552,7 +552,7 @@ class MsgPackScanner {
     }
 
     private func scanCurrent() {
-        if off > 0, off < data.count {
+        if off > 0, off <= data.count {
             opcode = Self.step(data[off - 1])
         }
     }
