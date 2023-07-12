@@ -79,6 +79,8 @@ final class DecodeTests: XCTestCase {
             try t(in: "e0", type: Int32.self, out: -0x20)
             try t(in: "e0", type: Int64.self, out: -0x20)
             try t(in: "e0", type: Int.self, out: -0x20)
+            try t(in: "cc80", type: Int32.self, out: Int32(Int8.max) + 1)
+            try t(in: "ce80000000", type: Int64.self, out: Int64(Int32.max) + 1)
             // UnkeyedDecodingContainer
             try t(in: "dc0003a3616263a378797aa3646464", type: SS.self, out: SS(a: ["abc", "xyz", "ddd"]))
             try t(in: "921234", type: UIS.self, out: UIS(a: [0x12, 0x34]))

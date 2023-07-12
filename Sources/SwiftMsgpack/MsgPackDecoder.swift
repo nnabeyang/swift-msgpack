@@ -123,8 +123,10 @@ private extension _MsgPackDecoder {
         }
         if case let .literal(vv) = value {
             switch vv {
-            case .uint, .int:
-                return type.init(try bigEndianInt(vv.data))
+            case .uint:
+                return T(try bigEndianUInt(vv.data))
+            case .int:
+                return T(try bigEndianInt(vv.data))
             default:
                 break
             }
