@@ -107,10 +107,18 @@ private extension _MsgPackDecoder {
         if value == .Nil {
             return nil
         }
-        if case let .literal(.float(v)) = value {
-            return try type.init(data: v)
+        if case let .literal(v) = value {
+            switch v {
+            case .float:
+                return try type.init(data: v.data)
+            case .uint:
+                return T(try bigEndianUInt(v.data))
+            case .int:
+                return T(try bigEndianInt(v.data))
+            default:
+                break
+            }
         }
-
         throw DecodingError.typeMismatch(type, DecodingError.Context(
             codingPath: codingPath,
             debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
