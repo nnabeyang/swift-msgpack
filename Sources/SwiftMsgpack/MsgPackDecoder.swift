@@ -124,7 +124,7 @@ private extension _MsgPackDecoder {
             debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
         ))
     }
-
+    
     func unboxInt<T: SignedInteger>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
         if value == .Nil {
             return nil
@@ -132,9 +132,23 @@ private extension _MsgPackDecoder {
         if case let .literal(vv) = value {
             switch vv {
             case .uint:
-                return T(try bigEndianUInt(vv.data))
+                let v = try bigEndianUInt(vv.data)
+                guard let r=T(exactly:v ) else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(
+                        codingPath: codingPath,
+                        debugDescription: "Expected to decode \(type) but found \(v)(\(value.debugDataTypeDescription)) instead."
+                    ))
+                }
+                return r
             case .int:
-                return T(try bigEndianInt(vv.data))
+                let v = try bigEndianInt(vv.data)
+                guard let r=T(exactly:v ) else {
+                    throw DecodingError.typeMismatch(type, DecodingError.Context(
+                        codingPath: codingPath,
+                        debugDescription: "Expected to decode \(type) but found \(v)(\(value.debugDataTypeDescription)) instead."
+                    ))
+                }
+                return r
             default:
                 break
             }
