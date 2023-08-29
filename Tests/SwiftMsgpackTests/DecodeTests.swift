@@ -11,12 +11,13 @@ final class DecodeTests: XCTestCase {
                 XCTFail()
                 return
             }
-            XCTAssertEqual(actual, out)
+            XCTAssertEqual(actual, out, String(format:"input: %@", input))
         } catch {
             guard let errorType = errorType else {
+                XCTFail(String(format:"input: %@, error:%@", input, error.localizedDescription ))
                 throw error
             }
-            XCTAssertTrue(type(of: error) == errorType)
+            XCTAssertTrue(type(of: error) == errorType, String(format:"input: %@", input))
         }
     }
 
@@ -51,6 +52,7 @@ final class DecodeTests: XCTestCase {
             try t(in: "c403123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
             try t(in: "c50003123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
             try t(in: "c600000003123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
+            try t(in: "10", type: Float.self, out: 16.0)
             try t(in: "ca4015c28f", type: Float.self, out: 2.34)
             try t(in: "cb4002b851eb851eb8", type: Double.self, out: 2.34)
             try t(in: "cc80", type: UInt8.self, out: 0x80)
