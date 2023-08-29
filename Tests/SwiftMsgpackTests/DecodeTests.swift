@@ -81,8 +81,16 @@ final class DecodeTests: XCTestCase {
             try t(in: "e0", type: Int32.self, out: -0x20)
             try t(in: "e0", type: Int64.self, out: -0x20)
             try t(in: "e0", type: Int.self, out: -0x20)
+            try t(in: "e0", type: Float.self, out: -0x20)
+            try t(in: "e0", type: Double.self, out: -0x20)
             try t(in: "cc80", type: Int32.self, out: Int32(Int8.max) + 1)
             try t(in: "ce80000000", type: Int64.self, out: Int64(Int32.max) + 1)
+            try t(in: "ce80000000", type: Float.self, out: Float(Int32.max)) // "+1" has no effect.
+            try t(in: "ce80000000", type: Double.self, out: Double(Int32.max) + 1)
+            try t(in: "cfffffffffffffffff", type: UInt64.self, out: UInt64.max )
+            try t(in: "cfffffffffffffffff", type: Float.self, out: Float(UInt64.max))
+            try t(in: "cfffffffffffffffff", type: Double.self, out: Double(UInt64.max))
+            
             // UnkeyedDecodingContainer
             try t(in: "dc0003a3616263a378797aa3646464", type: SS.self, out: SS(a: ["abc", "xyz", "ddd"]))
             try t(in: "921234", type: UIS.self, out: UIS(a: [0x12, 0x34]))
@@ -120,6 +128,13 @@ final class DecodeTests: XCTestCase {
             try t(in: "c3", type: String.self, out: "", errorType: DecodingError.self)
             try t(in: "c3", type: Data.self, out: .init(), errorType: DecodingError.self)
             try t(in: "7f", type: Bool.self, out: true, errorType: DecodingError.self)
+            // overflow
+            try t(in: "ce80000000", type: Int16.self, out: 0 , errorType: DecodingError.self)
+            try t(in: "cfffffffffffffffff", type: Int64.self, out: Int64.max, errorType: DecodingError.self)
+            try t(in: "e0", type: UInt8.self, out: 0, errorType: DecodingError.self)
+            try t(in: "e0", type: UInt16.self, out: 0, errorType: DecodingError.self)
+            try t(in: "e0", type: UInt32.self, out: 0, errorType: DecodingError.self)
+            try t(in: "e0", type: UInt64.self, out: 0, errorType: DecodingError.self)
         } catch {
             XCTFail(error.localizedDescription)
         }
