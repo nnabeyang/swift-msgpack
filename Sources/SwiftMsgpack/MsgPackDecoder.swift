@@ -94,7 +94,10 @@ private extension _MsgPackDecoder {
             return nil
         }
         if case let .literal(.str(v)) = value {
-            return String(data: v, encoding: .utf8)
+            guard let s = String(data: v, encoding: .utf8) else {
+                throw MsgPackDecodingError.dataCorrupted
+            }
+            return s
         }
 
         throw DecodingError.typeMismatch(type, DecodingError.Context(
@@ -182,7 +185,10 @@ extension _MsgPackDecoder {
         }
         if let type = type as? MsgPackDecodable.Type {
             let value = try unwrapMsgPackDecodable(as: type)
-            return value as! T
+            guard let ret = value as? T else {
+                throw MsgPackDecodingError.dataCorrupted
+            }
+            return ret
         }
         if T.self is _MsgPackDictionaryDecodableMarker.Type {
             try checkDictionay(as: T.self)
@@ -252,59 +258,101 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
     }
 
     func decode(_: Bool.Type) throws -> Bool {
-        try decoder.unbox(value, as: Bool.self)!
+        guard let b = try decoder.unbox(value, as: Bool.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return b
     }
 
     func decode(_ type: String.Type) throws -> String {
-        try decoder.unbox(value, as: type)!
+        guard let s = try decoder.unbox(value, as: String.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return s
     }
 
     func decode(_ type: Double.Type) throws -> Double {
-        try decoder.unboxFloat(value, as: type)!
+        guard let d = try decoder.unboxFloat(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return d
     }
 
     func decode(_ type: Float.Type) throws -> Float {
-        try decoder.unboxFloat(value, as: type)!
+        guard let f = try decoder.unboxFloat(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return f
     }
 
     func decode(_ type: Int.Type) throws -> Int {
-        try decoder.unboxInt(value, as: type)!
+        guard let i = try decoder.unboxInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: Int8.Type) throws -> Int8 {
-        try decoder.unboxInt(value, as: type)!
+        guard let i = try decoder.unboxInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: Int16.Type) throws -> Int16 {
-        try decoder.unboxInt(value, as: type)!
+        guard let i = try decoder.unboxInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: Int32.Type) throws -> Int32 {
-        try decoder.unboxInt(value, as: type)!
+        guard let i = try decoder.unboxInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: Int64.Type) throws -> Int64 {
-        try decoder.unboxInt(value, as: type)!
+        guard let i = try decoder.unboxInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: UInt.Type) throws -> UInt {
-        try decoder.unboxUInt(value, as: type)!
+        guard let i = try decoder.unboxUInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: UInt8.Type) throws -> UInt8 {
-        try decoder.unboxUInt(value, as: type)!
+        guard let i = try decoder.unboxUInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: UInt16.Type) throws -> UInt16 {
-        try decoder.unboxUInt(value, as: type)!
+        guard let i = try decoder.unboxUInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: UInt32.Type) throws -> UInt32 {
-        try decoder.unboxUInt(value, as: type)!
+        guard let i = try decoder.unboxUInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode(_ type: UInt64.Type) throws -> UInt64 {
-        try decoder.unboxUInt(value, as: type)!
+        guard let i = try decoder.unboxUInt(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return i
     }
 
     func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
@@ -365,13 +413,19 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     mutating func decode(_: Bool.Type) throws -> Bool {
         let value = try getNextValue(ofType: String.self)
         currentIndex += 1
-        return try decoder.unbox(value, as: Bool.self)!
+        guard let r = try decoder.unbox(value, as: Bool.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return r
     }
 
     mutating func decode(_: String.Type) throws -> String {
         let value = try getNextValue(ofType: String.self)
         currentIndex += 1
-        return try decoder.unbox(value, as: String.self)!
+        guard let s = try decoder.unbox(value, as: String.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return s
     }
 
     mutating func decode(_: Double.Type) throws -> Double {
@@ -470,7 +524,9 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     @inline(__always)
     private mutating func decodeUInt<T: UnsignedInteger>(as _: T.Type) throws -> T {
         let value = try getNextValue(ofType: T.self)
-        let result = try decoder.unboxUInt(value, as: T.self)!
+        guard let result = try decoder.unboxUInt(value, as: T.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
         currentIndex += 1
         return result
     }
@@ -478,7 +534,9 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     @inline(__always)
     private mutating func decodeInt<T: SignedInteger>(as _: T.Type) throws -> T {
         let value = try getNextValue(ofType: T.self)
-        let result = try decoder.unboxInt(value, as: T.self)!
+        guard let result = try decoder.unboxInt(value, as: T.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
         currentIndex += 1
         return result
     }
@@ -486,7 +544,9 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     @inline(__always)
     private mutating func decodeFloat<T: BinaryFloatingPoint & DataNumber>(as _: T.Type) throws -> T {
         let value = try getNextValue(ofType: T.self)
-        let result = try decoder.unboxFloat(value, as: T.self)!
+        guard let result = try decoder.unboxFloat(value, as: T.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
         currentIndex += 1
         return result
     }
@@ -525,12 +585,18 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     func decode(_ type: Bool.Type, forKey key: Key) throws -> Bool {
         let value = try getValue(forKey: key)
-        return try decoder.unbox(value, as: type)!
+        guard let v = try decoder.unbox(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return v
     }
 
     func decode(_ type: String.Type, forKey key: Key) throws -> String {
         let value = try getValue(forKey: key)
-        return try decoder.unbox(value, as: type)!
+        guard let r = try decoder.unbox(value, as: type) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return r
     }
 
     func decode(_: Double.Type, forKey key: Key) throws -> Double {
@@ -627,7 +693,10 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     @inline(__always)
     private func decodeFloat<T: BinaryFloatingPoint & DataNumber>(key: K) throws -> T {
         let value = try getValue(forKey: key)
-        return try decoder.unboxFloat(value, as: T.self)!
+        guard let r = try decoder.unboxFloat(value, as: T.self) else {
+            throw MsgPackDecodingError.dataCorrupted
+        }
+        return r
     }
 
     @inline(__always)

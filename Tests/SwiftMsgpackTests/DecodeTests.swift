@@ -165,6 +165,25 @@ final class DecodeTests: XCTestCase {
         XCTAssertEqual(dict.count, 1)
         XCTAssertEqual(dict["key"], AnyCodable(0x34))
     }
+
+    func testDecodeMalformedString() throws {
+        let s = "gaFzgaZzdHJpbmfZOUluIHRvdGFsIGRhcmtuZXNzLCBvciBpbiBhIHZlcnkgbGFyZ2Ugcm9vbSwgdmVyeSBxdWlldGx54oCm"
+        guard let sd = s.data(using: .ascii) else {
+            XCTFail("couldn't encode string as ascii")
+            return
+        }
+        guard let d = Data(base64Encoded: sd) else {
+            XCTFail("couldn't decode base64 data")
+            return
+        }
+        let decoder = MsgPackDecoder()
+        do {
+            let v = try decoder.decode(MalformedStringTest.self, from: d)
+            XCTFail("expected failure, decoded \(v)")
+        } catch {
+            // pass, error expected
+        }
+    }
 }
 
 private struct AnyCodingKeys: CodingKey {
@@ -432,5 +451,13 @@ private struct Pairs: Decodable, Equatable {
             b.append(.init(X: x, Y: y))
         }
         a = b
+    }
+}
+
+private enum MalformedStringTest: Codable {
+    case S(s: String)
+
+    enum CodingKeys: String, CodingKey {
+        case S = "s"
     }
 }
