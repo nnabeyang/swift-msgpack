@@ -184,6 +184,26 @@ final class DecodeTests: XCTestCase {
             // pass, error expected
         }
     }
+
+    func testDecodeRandomBytes() throws {
+        let srcText = "82a3666f6fa3626172a362617a9701a6e381bbe381928090cbe947e38a1b3f4bd5cb693e6769f422036ccf2762762762762762"
+        for i in 0..<1000 {
+            do {
+                var bin = Data(hex:srcText)
+                let ix = i % bin.count
+                let noise = UInt8(1 + (i*7+13) % 255)
+                bin[ix] ^= noise
+                let _ = try decoder.decode(AnyCodable.self, from:bin)
+            }
+            //It is ok if the decoder reports an error without crashing
+            catch is MsgPackDecodingError {
+                print( "caught: i=", i )
+            }
+            catch is DecodingError {
+                print( "caught: i=", i )
+            }
+        }
+    }
 }
 
 private struct AnyCodingKeys: CodingKey {
