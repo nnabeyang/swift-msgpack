@@ -79,7 +79,7 @@ let package = Package(
     // name, platforms, products, etc.
     dependencies: [
         // other dependencies
-        .package(url: "https://github.com/nnabeyang/swift-msgpack", from: "0.2.6"),
+        .package(url: "https://github.com/nnabeyang/swift-msgpack", from: "0.2.8"),
     ],
     targets: [
         .executableTarget(name: "<executable-target-name>", dependencies: [
