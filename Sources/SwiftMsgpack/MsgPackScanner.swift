@@ -380,11 +380,11 @@ class MsgPackScanner {
         case 0xC4, 0xC5, 0xC6: // bin 8, bin 16, bin 32
             let nn = 1 << (c - 0xC4)
             let dd = data[i ..< i + nn]
-            i += try bigEndianInt(dd) + nn
+            i += Int(try bigEndianUInt(dd)) + nn
         case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
             let nn = 1 << (c - 0xC7)
             let dd = data[i ..< i + nn]
-            i += try bigEndianInt(dd) + nn + 1
+            i += Int(try bigEndianUInt(dd)) + nn + 1
         case 0xCA, 0xCB: // Float, Double
             i += 4 << (c - 0xCA)
         case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
@@ -396,7 +396,7 @@ class MsgPackScanner {
         case 0xD9, 0xDA, 0xDB: // str8, str16, str32
             let nn = 1 << (c - 0xD9)
             let dd = data[i ..< i + nn]
-            i += try bigEndianInt(dd) + nn
+            i += Int(try bigEndianUInt(dd)) + nn
         default:
             if c & 0xE0 == 0xE0 { // negative fixint
                 break
