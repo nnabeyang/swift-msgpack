@@ -153,7 +153,7 @@ extension AnyCodable: CustomDebugStringConvertible {
 }
 
 internal struct _ConcreateCodableBox<Base> {
-    var _baseCodableKey: Base
+    let _baseCodableKey: Base
     init(_ base: Base) {
         _baseCodableKey = base
     }
