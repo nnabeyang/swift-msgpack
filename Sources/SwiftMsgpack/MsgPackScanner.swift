@@ -416,7 +416,9 @@ class MsgPackScanner {
         case .literal:
             let start = readIndex()
             try rescanLiteral()
-            literal(data[start ..< readIndex()], &v)
+            literal(data[start ..< readIndex()]).map {
+                v = $0
+            }
         case .array:
             try array(&v)
         case .map:
@@ -428,54 +430,48 @@ class MsgPackScanner {
         }
     }
 
-    private func literal(_ item: Data, _ v: inout MsgPackValue) {
+    private func literal(_ item: Data) -> MsgPackValue? {
         let c = item.first!
         switch c {
         case 0xC0: // nil
-            v = .literal(.nil)
+            return .literal(.nil)
         case 0xC2: // false
-            v = .literal(.bool(false))
+            return .literal(.bool(false))
         case 0xC3: // true
-            v = .literal(.bool(true))
+            return .literal(.bool(true))
         case 0xC4, 0xC5, 0xC6: // bin8, bin16, bin32
-            v = .literal(.bin(item.dropFirst(1 + (1 << (c - 0xC4)))))
+            return .literal(.bin(item.dropFirst(1 + (1 << (c - 0xC4)))))
         case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
             let nn = 1 + 1 << (c - 0xC7)
             let dd = [UInt8](item)
             let n = dd.count
             let typeNo = Int8(bigEndian: Data([dd[nn]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
-            v = .ext(typeNo, .init(dd[nn + 1 ..< n]))
-            return
+            return .ext(typeNo, .init(dd[nn + 1 ..< n]))
         case 0xCA, 0xCB: // float 32, float 64
-            v = .literal(.float(item.dropFirst(1)))
+            return .literal(.float(item.dropFirst(1)))
         case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
-            v = .literal(.uint(item.dropFirst(1)))
-            return
+            return .literal(.uint(item.dropFirst(1)))
         case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
-            v = .literal(.int(item.dropFirst(1)))
-            return
+            return .literal(.int(item.dropFirst(1)))
         case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 2, fixext 4, fixext 8
             let dd = [UInt8](item)
             let n = dd.count
             let typeNo = Int8(bigEndian: Data([dd[1]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
-            v = .ext(typeNo, .init(dd[2 ..< n]))
-            return
+            return .ext(typeNo, .init(dd[2 ..< n]))
         case 0xD9, 0xDA, 0xDB: // str8, str16, str32
-            v = .literal(.str(item.dropFirst(1 + (1 << (c - 0xD9)))))
+            return .literal(.str(item.dropFirst(1 + (1 << (c - 0xD9)))))
         default:
             if item.count == 1, c & 0xE0 == 0xE0 { // negative fixint
-                v = .literal(.int(item))
-                return
+                return .literal(.int(item))
             }
             if c & 0xA0 == 0xA0 { // fixstr
-                v = .literal(.str(item.dropFirst(1)))
-                return
+                return .literal(.str(item.dropFirst(1)))
             }
             if item.count == 1, c & 0x80 == 0 { // fixint
-                v = .literal(.uint(item))
-                return
+                return .literal(.uint(item))
             }
         }
+        return nil
     }
 
     private func array(_ v: inout MsgPackValue) throws {
