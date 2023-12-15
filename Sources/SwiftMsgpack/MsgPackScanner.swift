@@ -146,11 +146,7 @@ extension MsgPackValue {
 
     func asMap() -> MsgPackValue {
         switch self {
-        case .none:
-            return .map([], [:])
-        case .literal:
-            return .map([], [:])
-        case .ext:
+        case .none, .literal, .ext:
             return .map([], [:])
         case let .array(a):
             if a.count % 2 != 0 {
@@ -174,11 +170,7 @@ extension MsgPackValue {
 
     subscript(index: Int) -> MsgPackValue {
         switch self {
-        case .none:
-            return .none
-        case .literal:
-            return .none
-        case .ext:
+        case .none, .literal, .ext:
             return .none
         case let .array(a):
             return a[index]
