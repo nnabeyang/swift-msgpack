@@ -386,7 +386,7 @@ class MsgPackScanner {
     }
 
     func parse(_ v: inout MsgPackValue) throws {
-        v = try value()
+        v = try scan()
     }
 
     private func skipLiteral() throws {
@@ -426,21 +426,21 @@ class MsgPackScanner {
         off = i + 1
     }
 
-    private func value() throws -> MsgPackValue {
+    private func scan() throws -> MsgPackValue {
         let opcode = peekOpCode()
         switch opcode {
         case .end, .neverUsed:
             return .none
         case .literal:
-            return try literal()
+            return try scanLiteral()
         case .array:
-            return try array()
+            return try scanArray()
         case .map:
-            return try map()
+            return try scanMap()
         }
     }
 
-    private func literal() throws -> MsgPackValue {
+    private func scanLiteral() throws -> MsgPackValue {
         let start = off
         try skipLiteral()
         let item = data[start ..< off]
@@ -487,7 +487,7 @@ class MsgPackScanner {
         return .none
     }
 
-    private func array() throws -> MsgPackValue {
+    private func scanArray() throws -> MsgPackValue {
         let c = data[off]
         let n: Int = try { () -> Int in
             switch c {
@@ -506,12 +506,12 @@ class MsgPackScanner {
         }()
         var a: [MsgPackValue] = []
         for _ in 0 ..< n {
-            a.append(try value())
+            a.append(try scan())
         }
         return .array(a)
     }
 
-    private func map() throws -> MsgPackValue {
+    private func scanMap() throws -> MsgPackValue {
         let c = data[off]
         let n: Int = try { () -> Int in
             switch c {
@@ -531,8 +531,8 @@ class MsgPackScanner {
         var keys: [MsgPackValue] = []
         var m: [MsgPackValue: MsgPackValue] = [:]
         for _ in 0 ..< n {
-            let key = try value()
-            let val = try value()
+            let key = try scan()
+            let val = try scan()
             m[key] = val
             keys.append(key)
         }
