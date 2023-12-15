@@ -368,7 +368,7 @@ class MsgPackScanner {
 
     func parse(_ v: inout MsgPackValue) throws {
         scanNext()
-        try value(&v)
+        v = try value()
     }
 
     private func rescanLiteral() throws {
@@ -408,25 +408,19 @@ class MsgPackScanner {
         off = i + 1
     }
 
-    private func value(_ v: inout MsgPackValue) throws {
+    private func value() throws -> MsgPackValue {
         let opcode = opcode
         switch opcode {
-        case .begin:
-            break
+        case .begin, .end, .neverUsed:
+            return .none
         case .literal:
             let start = readIndex()
             try rescanLiteral()
-            literal(data[start ..< readIndex()]).map {
-                v = $0
-            }
+            return literal(data[start ..< readIndex()]) ?? .none
         case .array:
-            v = try array()
+            return try array()
         case .map:
-            v = try map()
-        case .neverUsed:
-            break
-        case .end:
-            break
+            return try map()
         }
     }
 
@@ -493,10 +487,8 @@ class MsgPackScanner {
         scanNext()
         var a: [MsgPackValue] = []
         for _ in 0 ..< n {
-            var ch: MsgPackValue = .none
-            try value(&ch)
+            a.append(try value())
             scanCurrent()
-            a.append(ch)
         }
         return .array(a)
     }
@@ -521,12 +513,10 @@ class MsgPackScanner {
         var keys: [MsgPackValue] = []
         var m: [MsgPackValue: MsgPackValue] = [:]
         for _ in 0 ..< n {
-            var key: MsgPackValue = .none
-            var val: MsgPackValue = .none
             scanCurrent()
-            try value(&key)
+            let key = try value()
             scanCurrent()
-            try value(&val)
+            let val = try value()
             m[key] = val
             keys.append(key)
         }
