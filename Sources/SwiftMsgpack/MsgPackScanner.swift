@@ -389,7 +389,7 @@ class MsgPackScanner {
         v = try value()
     }
 
-    private func rescanLiteral() throws {
+    private func skipLiteral() throws {
         var i = off
         let c = data[i]
         switch c {
@@ -433,7 +433,7 @@ class MsgPackScanner {
             return .none
         case .literal:
             let start = off
-            try rescanLiteral()
+            try skipLiteral()
             return literal(data[start ..< off]) ?? .none
         case .array:
             return try array()
