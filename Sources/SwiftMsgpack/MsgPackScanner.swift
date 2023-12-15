@@ -420,7 +420,7 @@ class MsgPackScanner {
                 v = $0
             }
         case .array:
-            try array(&v)
+            v = try array()
         case .map:
             try map(&v)
         case .neverUsed:
@@ -474,7 +474,7 @@ class MsgPackScanner {
         return nil
     }
 
-    private func array(_ v: inout MsgPackValue) throws {
+    private func array() throws -> MsgPackValue {
         let c = data[off - 1]
         let n: Int = try { () -> Int in
             switch c {
@@ -498,7 +498,7 @@ class MsgPackScanner {
             scanCurrent()
             a.append(ch)
         }
-        v = .array(a)
+        return .array(a)
     }
 
     private func map(_ v: inout MsgPackValue) throws {
