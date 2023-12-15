@@ -341,7 +341,6 @@ extension MsgPackValue {
 }
 
 enum MsgPackOpCode {
-    case begin
     case literal
     case array
     case map
@@ -381,30 +380,28 @@ enum MsgPackOpCode {
 class MsgPackScanner {
     private let data: Data
     private var off = 0
-    private var opcode: MsgPackOpCode = .begin
     init(data: Data) {
         self.data = data
         off = 0
     }
 
     func parse(_ v: inout MsgPackValue) throws {
-        scanNext()
         v = try value()
     }
 
     private func rescanLiteral() throws {
         var i = off
-        let c = data[i - 1]
+        let c = data[i]
         switch c {
         case 0xC0, 0xC2, 0xC3: // nil, false, true
             break
         case 0xC4, 0xC5, 0xC6: // bin 8, bin 16, bin 32
             let nn = 1 << (c - 0xC4)
-            let dd = data[i ..< i + nn]
+            let dd = data[i + 1 ..< i + 1 + nn]
             i += Int(try bigEndianUInt(dd)) + nn
         case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
             let nn = 1 << (c - 0xC7)
-            let dd = data[i ..< i + nn]
+            let dd = data[i + 1 ..< i + 1 + nn]
             i += Int(try bigEndianUInt(dd)) + nn + 1
         case 0xCA, 0xCB: // Float, Double
             i += 4 << (c - 0xCA)
@@ -416,7 +413,7 @@ class MsgPackScanner {
             i += 1 + (1 << (c - 0xD4))
         case 0xD9, 0xDA, 0xDB: // str8, str16, str32
             let nn = 1 << (c - 0xD9)
-            let dd = data[i ..< i + nn]
+            let dd = data[i + 1 ..< i + 1 + nn]
             i += Int(try bigEndianUInt(dd)) + nn
         default:
             if c & 0xE0 == 0xE0 { // negative fixint
@@ -430,14 +427,14 @@ class MsgPackScanner {
     }
 
     private func value() throws -> MsgPackValue {
-        let opcode = opcode
+        let opcode = peekOpCode()
         switch opcode {
-        case .begin, .end, .neverUsed:
+        case .end, .neverUsed:
             return .none
         case .literal:
-            let start = readIndex()
+            let start = off
             try rescanLiteral()
-            return literal(data[start ..< readIndex()]) ?? .none
+            return literal(data[start ..< off]) ?? .none
         case .array:
             return try array()
         case .map:
@@ -490,53 +487,50 @@ class MsgPackScanner {
     }
 
     private func array() throws -> MsgPackValue {
-        let c = data[off - 1]
+        let c = data[off]
         let n: Int = try { () -> Int in
             switch c {
             case 0xDC, 0xDD: // array 16, array 32
                 let nn = 1 << (c - 0xDB)
-                let dd = self.data[self.off ..< self.off + nn]
-                self.off += nn
+                let dd = self.data[self.off + 1 ..< self.off + 1 + nn]
+                self.off += nn + 1
                 return try Int(bigEndianUInt(dd))
             default:
+                self.off += 1
                 if c & 0x90 == 0x90 {
                     return Int(c - 0x90)
                 }
                 return 0
             }
         }()
-        scanNext()
         var a: [MsgPackValue] = []
         for _ in 0 ..< n {
             a.append(try value())
-            scanCurrent()
         }
         return .array(a)
     }
 
     private func map() throws -> MsgPackValue {
-        let c = data[off - 1]
+        let c = data[off]
         let n: Int = try { () -> Int in
             switch c {
             case 0xDE, 0xDF: // map 16, map 32
                 let nn = 1 << (c - 0xDD)
-                let dd = self.data[self.off ..< self.off + nn]
-                self.off += nn
+                let dd = self.data[self.off + 1 ..< self.off + 1 + nn]
+                self.off += nn + 1
                 return try Int(bigEndianUInt(dd))
             default:
+                self.off += 1
                 if c & 0x80 == 0x80 { // fixmap
                     return Int(c - 0x80)
                 }
                 return 0
             }
         }()
-        scanNext()
         var keys: [MsgPackValue] = []
         var m: [MsgPackValue: MsgPackValue] = [:]
         for _ in 0 ..< n {
-            scanCurrent()
             let key = try value()
-            scanCurrent()
             let val = try value()
             m[key] = val
             keys.append(key)
@@ -548,19 +542,11 @@ class MsgPackScanner {
         off - 1
     }
 
-    private func scanNext() {
+    private func peekOpCode() -> MsgPackOpCode {
         if off < data.count {
-            opcode = MsgPackOpCode(ch: data[off])
-            off += 1
+            return MsgPackOpCode(ch: data[off])
         } else {
-            opcode = .end
-            off = data.count + 1
-        }
-    }
-
-    private func scanCurrent() {
-        if off > 0, off <= data.count {
-            opcode = MsgPackOpCode(ch: data[off - 1])
+            return .end
         }
     }
 }
