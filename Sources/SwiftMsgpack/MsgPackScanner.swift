@@ -422,7 +422,7 @@ class MsgPackScanner {
         case .array:
             v = try array()
         case .map:
-            try map(&v)
+            v = try map()
         case .neverUsed:
             break
         case .end:
@@ -501,7 +501,7 @@ class MsgPackScanner {
         return .array(a)
     }
 
-    private func map(_ v: inout MsgPackValue) throws {
+    private func map() throws -> MsgPackValue {
         let c = data[off - 1]
         let n: Int = try { () -> Int in
             switch c {
@@ -530,7 +530,7 @@ class MsgPackScanner {
             m[key] = val
             keys.append(key)
         }
-        v = .map(keys, m)
+        return .map(keys, m)
     }
 
     private func readIndex() -> Int {
