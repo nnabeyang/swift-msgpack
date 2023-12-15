@@ -385,10 +385,6 @@ class MsgPackScanner {
         off = 0
     }
 
-    func parse(_ v: inout MsgPackValue) throws {
-        v = try scan()
-    }
-
     private func skipLiteral() throws {
         var i = off
         let c = data[i]
@@ -426,7 +422,7 @@ class MsgPackScanner {
         off = i + 1
     }
 
-    private func scan() throws -> MsgPackValue {
+    func scan() throws -> MsgPackValue {
         let opcode = peekOpCode()
         switch opcode {
         case .end, .neverUsed:

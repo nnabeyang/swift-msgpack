@@ -12,8 +12,7 @@ open class MsgPackDecoder {
     public init() {}
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         let scanner: MsgPackScanner = .init(data: data)
-        var value: MsgPackValue = .none
-        try scanner.parse(&value)
+        let value = try scanner.scan()
         let decoder: _MsgPackDecoder = .init(from: value)
         do {
             return try decoder.unwrap(as: T.self)
