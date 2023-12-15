@@ -385,43 +385,6 @@ class MsgPackScanner {
         off = 0
     }
 
-    private func skipLiteral() throws {
-        var i = off
-        let c = data[i]
-        switch c {
-        case 0xC0, 0xC2, 0xC3: // nil, false, true
-            break
-        case 0xC4, 0xC5, 0xC6: // bin 8, bin 16, bin 32
-            let nn = 1 << (c - 0xC4)
-            let dd = data[i + 1 ..< i + 1 + nn]
-            i += Int(try bigEndianUInt(dd)) + nn
-        case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
-            let nn = 1 << (c - 0xC7)
-            let dd = data[i + 1 ..< i + 1 + nn]
-            i += Int(try bigEndianUInt(dd)) + nn + 1
-        case 0xCA, 0xCB: // Float, Double
-            i += 4 << (c - 0xCA)
-        case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
-            i += 1 << (c - 0xCC)
-        case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
-            i += 1 << (c - 0xD0)
-        case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 4, fixext 8, fixext 16
-            i += 1 + (1 << (c - 0xD4))
-        case 0xD9, 0xDA, 0xDB: // str8, str16, str32
-            let nn = 1 << (c - 0xD9)
-            let dd = data[i + 1 ..< i + 1 + nn]
-            i += Int(try bigEndianUInt(dd)) + nn
-        default:
-            if c & 0xE0 == 0xE0 { // negative fixint
-                break
-            }
-            if c & 0xA0 == 0xA0 { // fixstr
-                i += Int(c - 0xA0)
-            }
-        }
-        off = i + 1
-    }
-
     func scan() throws -> MsgPackValue {
         let opcode = peekOpCode()
         switch opcode {
@@ -481,6 +444,43 @@ class MsgPackScanner {
             }
         }
         return .none
+    }
+
+    private func skipLiteral() throws {
+        var i = off
+        let c = data[i]
+        switch c {
+        case 0xC0, 0xC2, 0xC3: // nil, false, true
+            break
+        case 0xC4, 0xC5, 0xC6: // bin 8, bin 16, bin 32
+            let nn = 1 << (c - 0xC4)
+            let dd = data[i + 1 ..< i + 1 + nn]
+            i += Int(try bigEndianUInt(dd)) + nn
+        case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
+            let nn = 1 << (c - 0xC7)
+            let dd = data[i + 1 ..< i + 1 + nn]
+            i += Int(try bigEndianUInt(dd)) + nn + 1
+        case 0xCA, 0xCB: // Float, Double
+            i += 4 << (c - 0xCA)
+        case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
+            i += 1 << (c - 0xCC)
+        case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
+            i += 1 << (c - 0xD0)
+        case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 4, fixext 8, fixext 16
+            i += 1 + (1 << (c - 0xD4))
+        case 0xD9, 0xDA, 0xDB: // str8, str16, str32
+            let nn = 1 << (c - 0xD9)
+            let dd = data[i + 1 ..< i + 1 + nn]
+            i += Int(try bigEndianUInt(dd)) + nn
+        default:
+            if c & 0xE0 == 0xE0 { // negative fixint
+                break
+            }
+            if c & 0xA0 == 0xA0 { // fixstr
+                i += Int(c - 0xA0)
+            }
+        }
+        off = i + 1
     }
 
     private func scanArray() throws -> MsgPackValue {
