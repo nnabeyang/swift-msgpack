@@ -563,10 +563,6 @@ class MsgPackScanner {
             opcode = MsgPackOpCode(ch: data[off - 1])
         }
     }
-
-    subscript(_: Int) -> Data {
-        Data()
-    }
 }
 
 private extension Data {
