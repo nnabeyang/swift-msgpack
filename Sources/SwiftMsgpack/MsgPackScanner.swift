@@ -347,6 +347,35 @@ enum MsgPackOpCode {
     case map
     case neverUsed
     case end
+
+    init(ch c: UInt8) {
+        if c <= 0xBF || c >= 0xE0 {
+            if c & 0xE0 == 0xE0 { // negative fixint
+                self = .literal
+            } else if c & 0xA0 == 0xA0 { // fixstr
+                self = .literal
+            } else if c & 0x90 == 0x90 { // fixarray
+                self = .array
+            } else if c & 0x80 == 0x80 { // fixmap
+                self = .map
+            } else if c & 0x80 == 0 { // positive fixint
+                self = .literal
+            } else {
+                self = .neverUsed
+            }
+        } else {
+            switch c {
+            case 0xC1: // never used
+                self = .neverUsed
+            case 0xDC, 0xDD: // array 16, array 32
+                self = .array
+            case 0xDE, 0xDF: // map 16, map 32
+                self = .map
+            default:
+                self = .literal
+            }
+        }
+    }
 }
 
 class MsgPackScanner {
@@ -521,7 +550,7 @@ class MsgPackScanner {
 
     private func scanNext() {
         if off < data.count {
-            opcode = Self.step(data[off])
+            opcode = MsgPackOpCode(ch: data[off])
             off += 1
         } else {
             opcode = .end
@@ -531,39 +560,7 @@ class MsgPackScanner {
 
     private func scanCurrent() {
         if off > 0, off <= data.count {
-            opcode = Self.step(data[off - 1])
-        }
-    }
-
-    private static func step(_ c: UInt8) -> MsgPackOpCode {
-        if c <= 0xBF || c >= 0xE0 {
-            if c & 0xE0 == 0xE0 { // negative fixint
-                return .literal
-            }
-            if c & 0xA0 == 0xA0 { // fixstr
-                return .literal
-            }
-            if c & 0x90 == 0x90 { // fixarray
-                return .array
-            }
-            if c & 0x80 == 0x80 { // fixmap
-                return .map
-            }
-            if c & 0x80 == 0 { // positive fixint
-                return .literal
-            }
-            return .neverUsed
-        }
-
-        switch c {
-        case 0xC1: // never used
-            return .neverUsed
-        case 0xDC, 0xDD: // array 16, array 32
-            return .array
-        case 0xDE, 0xDF: // map 16, map 32
-            return .map
-        default:
-            return .literal
+            opcode = MsgPackOpCode(ch: data[off - 1])
         }
     }
 
