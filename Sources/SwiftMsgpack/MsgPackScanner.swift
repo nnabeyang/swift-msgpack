@@ -432,9 +432,7 @@ class MsgPackScanner {
         case .end, .neverUsed:
             return .none
         case .literal:
-            let start = off
-            try skipLiteral()
-            return literal(data[start ..< off]) ?? .none
+            return try literal()
         case .array:
             return try array()
         case .map:
@@ -442,8 +440,11 @@ class MsgPackScanner {
         }
     }
 
-    private func literal(_ item: Data) -> MsgPackValue? {
-        let c = item.first!
+    private func literal() throws -> MsgPackValue {
+        let start = off
+        try skipLiteral()
+        let item = data[start ..< off]
+        let c = item[start]
         switch c {
         case 0xC0: // nil
             return .literal(.nil)
@@ -483,7 +484,7 @@ class MsgPackScanner {
                 return .literal(.uint(item))
             }
         }
-        return nil
+        return .none
     }
 
     private func array() throws -> MsgPackValue {
