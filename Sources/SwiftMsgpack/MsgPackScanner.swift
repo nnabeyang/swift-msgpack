@@ -407,93 +407,185 @@ class MsgPackScanner {
     }
 
     private func scanLiteral() throws -> MsgPackValue {
-        let start = off
-        try skipLiteral()
-        let item = data[start ..< off]
-        let c = item[start]
+        let c = data[off]
         switch c {
         case 0xC0: // nil
+            off += 1
             return .literal(.nil)
         case 0xC2: // false
+            off += 1
             return .literal(.bool(false))
         case 0xC3: // true
+            off += 1
             return .literal(.bool(true))
-        case 0xC4, 0xC5, 0xC6: // bin8, bin16, bin32
-            return .literal(.bin(item.dropFirst(1 + (1 << (c - 0xC4)))))
-        case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
-            let nn = 1 + 1 << (c - 0xC7)
-            let dd = [UInt8](item)
-            let n = dd.count
-            let typeNo = Int8(bigEndian: Data([dd[nn]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
-            return .ext(typeNo, .init(dd[nn + 1 ..< n]))
-        case 0xCA, 0xCB: // float 32, float 64
-            return .literal(.float(item.dropFirst(1)))
-        case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
-            return .literal(.uint(item.dropFirst(1)))
-        case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
-            return .literal(.int(item.dropFirst(1)))
-        case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 2, fixext 4, fixext 8
-            let dd = [UInt8](item)
-            let n = dd.count
-            let typeNo = Int8(bigEndian: Data([dd[1]]).withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 })
-            return .ext(typeNo, .init(dd[2 ..< n]))
-        case 0xD9, 0xDA, 0xDB: // str8, str16, str32
-            return .literal(.str(item.dropFirst(1 + (1 << (c - 0xD9)))))
+        case 0xC4: // bin8
+            let n = Int(data[off + 1])
+            let s = off + 1 + (1 << 0)
+            let e = s + n
+            off = e
+            return .literal(.bin(data[s ..< e]))
+        case 0xC5: // bin16
+            let d = 1 << 1
+            let n = Int(bigEndianFixedWidthInt(data[off + 1 ..< off + 1 + d], as: UInt16.self))
+            let s = off + 1 + d
+            let e = s + n
+            off = e
+            return .literal(.bin(data[s ..< e]))
+        case 0xC6: // bin32
+            let d = 1 << 2
+            let n = Int(bigEndianFixedWidthInt(data[off + 1 ..< off + 1 + d], as: UInt32.self))
+            let s = off + 1 + d
+            let e = s + n
+            off = e
+            return .literal(.bin(data[s ..< e]))
+        case 0xC7: // ext8
+            let n = Int(data[off + 1])
+            let typeNo = Int8(truncatingIfNeeded: data[off + 2])
+
+            let s = off + 1 + (1 << 0) + 1
+            let e = s + n
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xC8: // ext16
+            let d = 1 << 1
+            let n = Int(bigEndianFixedWidthInt(data[off + 1 ..< off + 1 + d], as: UInt16.self))
+            let typeNo = Int8(truncatingIfNeeded: data[off + 2])
+
+            let s = off + 1 + d + 1
+            let e = s + n
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xC9: // ext32
+            let d = 1 << 2
+            let n = Int(bigEndianFixedWidthInt(data[off + 1 ..< off + 1 + d], as: UInt32.self))
+            let typeNo = Int8(truncatingIfNeeded: data[off + 2])
+
+            let s = off + 1 + d + 1
+            let e = s + n
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xCA: // float32
+            let s = off + 1
+            let e = s + 1 << 2
+            off = e
+            return .literal(.float(data[s ..< e]))
+        case 0xCB: // float64
+            let s = off + 1
+            let e = s + 1 << 3
+            off = e
+            return .literal(.float(data[s ..< e]))
+        case 0xCC: // uint8
+            let s = off + 1
+            let e = s + 1 << 0
+            off = e
+            return .literal(.uint(data[s ..< e]))
+        case 0xCD: // uint16
+            let s = off + 1
+            let e = s + 1 << 1
+            off = e
+            return .literal(.uint(data[s ..< e]))
+        case 0xCE: // uint32
+            let s = off + 1
+            let e = s + 1 << 2
+            off = e
+            return .literal(.uint(data[s ..< e]))
+        case 0xCF: // uint64
+            let s = off + 1
+            let e = s + 1 << 3
+            off = e
+            return .literal(.uint(data[s ..< e]))
+        case 0xD0: // int8
+            let s = off + 1
+            let e = s + 1 << 0
+            off = e
+            return .literal(.int(data[s ..< e]))
+        case 0xD1: // int16
+            let s = off + 1
+            let e = s + 1 << 1
+            off = e
+            return .literal(.int(data[s ..< e]))
+        case 0xD2: // int32
+            let s = off + 1
+            let e = s + 1 << 2
+            off = e
+            return .literal(.int(data[s ..< e]))
+        case 0xD3: // int64
+            let s = off + 1
+            let e = s + 1 << 3
+            off = e
+            return .literal(.int(data[s ..< e]))
+        case 0xD4: // fixext1
+            let typeNo = Int8(truncatingIfNeeded: data[off + 1])
+
+            let s = off + 1 + 1
+            let e = s + 1 << 0
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xD5: // fixext2
+            let typeNo = Int8(truncatingIfNeeded: data[off + 1])
+
+            let s = off + 1 + 1
+            let e = s + 1 << 1
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xD6: // fixext4
+            let typeNo = Int8(truncatingIfNeeded: data[off + 1])
+
+            let s = off + 1 + 1
+            let e = s + 1 << 2
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xD7: // fixext8
+            let typeNo = Int8(truncatingIfNeeded: data[off + 1])
+
+            let s = off + 1 + 1
+            let e = s + 1 << 3
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xD8: // fixext16
+            let typeNo = Int8(truncatingIfNeeded: data[off + 1])
+
+            let s = off + 1 + 1
+            let e = s + 1 << 4
+            off = e
+            return .ext(typeNo, data[s ..< e])
+        case 0xD9: // str8
+            let n = Int(data[off + 1])
+            let s = off + 1 + (1 << 0)
+            let e = s + n
+            off = e
+            return .literal(.str(data[s ..< e]))
+        case 0xDA: // str16
+            let d = 1 << 1
+            let n = Int(bigEndianFixedWidthInt(data[off + 1 ..< off + 1 + d], as: UInt16.self))
+            let s = off + 1 + d
+            let e = s + n
+            off = e
+            return .literal(.str(data[s ..< e]))
+        case 0xDB: // str32
+            let d = 1 << 2
+            let n = Int(bigEndianFixedWidthInt(data[off + 1 ..< off + 1 + d], as: UInt32.self))
+            let s = off + 1 + d
+            let e = s + n
+            off = e
+            return .literal(.str(data[s ..< e]))
         default:
-            if item.count == 1, c & 0xE0 == 0xE0 { // negative fixint
-                return .literal(.int(item))
+            if c & 0xE0 == 0xE0 { // negative fixint
+                off += 1
+                return .literal(.int(.init([c])))
             }
             if c & 0xA0 == 0xA0 { // fixstr
-                return .literal(.str(item.dropFirst(1)))
+                let s = off + 1
+                let e = s + Int(c - 0xA0)
+                off = e
+                return .literal(.str(data[s ..< e]))
             }
-            if item.count == 1, c & 0x80 == 0 { // fixint
-                return .literal(.uint(item))
+            if c & 0x80 == 0 { // fixint
+                off += 1
+                return .literal(.uint(.init([c])))
             }
         }
         return .none
-    }
-
-    private func skipLiteral() throws {
-        var i = off
-        let c = data[i]
-        switch c {
-        case 0xC0, 0xC2, 0xC3: // nil, false, true
-            break
-        case 0xC4: // bin 8
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 2], as: UInt8.self)) + 1
-        case 0xC5: // bin 16
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 3], as: UInt16.self)) + 2
-        case 0xC6: // bin 32
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 5], as: UInt32.self)) + 4
-        case 0xC7: // ext 8
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 2], as: UInt8.self)) + 2
-        case 0xC8: // ext 16
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 3], as: UInt16.self)) + 3
-        case 0xC9: // ext 32
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 5], as: UInt32.self)) + 5
-        case 0xCA, 0xCB: // Float, Double
-            i += 4 << (c - 0xCA)
-        case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
-            i += 1 << (c - 0xCC)
-        case 0xD0, 0xD1, 0xD2, 0xD3: // int8, int16, int32, int64
-            i += 1 << (c - 0xD0)
-        case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 4, fixext 8, fixext 16
-            i += 1 + (1 << (c - 0xD4))
-        case 0xD9: // str8
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 2], as: UInt8.self)) + 1
-        case 0xDA: // str16
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 3], as: UInt16.self)) + 2
-        case 0xDB: // str32
-            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 5], as: UInt32.self)) + 4
-        default:
-            if c & 0xE0 == 0xE0 { // negative fixint
-                break
-            }
-            if c & 0xA0 == 0xA0 { // fixstr
-                i += Int(c - 0xA0)
-            }
-        }
-        off = i + 1
     }
 
     private func scanArray() throws -> MsgPackValue {
