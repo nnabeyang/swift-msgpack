@@ -641,7 +641,7 @@ internal protocol DataNumber {
 
 extension Float: DataNumber {
     init(data: Data) throws {
-        self = .init(bitPattern: .init(try bigEndianUInt(data)))
+        self = .init(bitPattern: .init(bigEndianFixedWidthInt(data, as: UInt32.self)))
     }
 
     var data: Data {
@@ -653,7 +653,7 @@ extension Float: DataNumber {
 
 extension Double: DataNumber {
     init(data: Data) throws {
-        self = .init(bitPattern: .init(try bigEndianUInt(data)))
+        self = .init(bitPattern: .init(bigEndianFixedWidthInt(data, as: UInt64.self)))
     }
 
     var data: Data {

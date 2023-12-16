@@ -853,6 +853,10 @@ internal struct MsgPackKey: CodingKey {
     static let `super`: MsgPackKey = .init(stringValue: "super")
 }
 
+internal func bigEndianFixedWidthInt<T: FixedWidthInteger>(_ data: Data, as _: T.Type) -> T {
+    T(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: T.self).pointee ?? 0 })
+}
+
 internal func bigEndianUInt(_ data: Data) throws -> UInt {
     switch data.count {
     case 1:

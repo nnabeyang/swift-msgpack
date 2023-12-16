@@ -459,14 +459,18 @@ class MsgPackScanner {
         switch c {
         case 0xC0, 0xC2, 0xC3: // nil, false, true
             break
-        case 0xC4, 0xC5, 0xC6: // bin 8, bin 16, bin 32
-            let nn = 1 << (c - 0xC4)
-            let dd = data[i + 1 ..< i + 1 + nn]
-            i += Int(try bigEndianUInt(dd)) + nn
-        case 0xC7, 0xC8, 0xC9: // ext 8, ext 16, ext 32
-            let nn = 1 << (c - 0xC7)
-            let dd = data[i + 1 ..< i + 1 + nn]
-            i += Int(try bigEndianUInt(dd)) + nn + 1
+        case 0xC4: // bin 8
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 2], as: UInt8.self)) + 1
+        case 0xC5: // bin 16
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 3], as: UInt16.self)) + 2
+        case 0xC6: // bin 32
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 5], as: UInt32.self)) + 4
+        case 0xC7: // ext 8
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 2], as: UInt8.self)) + 2
+        case 0xC8: // ext 16
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 3], as: UInt16.self)) + 3
+        case 0xC9: // ext 32
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 5], as: UInt32.self)) + 5
         case 0xCA, 0xCB: // Float, Double
             i += 4 << (c - 0xCA)
         case 0xCC, 0xCD, 0xCE, 0xCF: // uint8, uint16, uint32, uint64
@@ -475,10 +479,12 @@ class MsgPackScanner {
             i += 1 << (c - 0xD0)
         case 0xD4, 0xD5, 0xD6, 0xD7, 0xD8: // fixext 1, fixext 4, fixext 8, fixext 16
             i += 1 + (1 << (c - 0xD4))
-        case 0xD9, 0xDA, 0xDB: // str8, str16, str32
-            let nn = 1 << (c - 0xD9)
-            let dd = data[i + 1 ..< i + 1 + nn]
-            i += Int(try bigEndianUInt(dd)) + nn
+        case 0xD9: // str8
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 2], as: UInt8.self)) + 1
+        case 0xDA: // str16
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 3], as: UInt16.self)) + 2
+        case 0xDB: // str32
+            i += Int(bigEndianFixedWidthInt(data[i + 1 ..< i + 5], as: UInt32.self)) + 4
         default:
             if c & 0xE0 == 0xE0 { // negative fixint
                 break
@@ -492,13 +498,16 @@ class MsgPackScanner {
 
     private func scanArray() throws -> MsgPackValue {
         let c = data[off]
-        let n: Int = try { () -> Int in
+        let n: Int = { () -> Int in
             switch c {
-            case 0xDC, 0xDD: // array 16, array 32
-                let nn = 1 << (c - 0xDB)
-                let dd = self.data[self.off + 1 ..< self.off + 1 + nn]
-                self.off += nn + 1
-                return try Int(bigEndianUInt(dd))
+            case 0xDC: // array 16
+                let dd = self.data[self.off + 1 ..< self.off + 3]
+                self.off += 3
+                return Int(bigEndianFixedWidthInt(dd, as: UInt16.self))
+            case 0xDD: // array 32
+                let dd = self.data[self.off + 1 ..< self.off + 5]
+                self.off += 5
+                return Int(bigEndianFixedWidthInt(dd, as: UInt32.self))
             default:
                 self.off += 1
                 if c & 0x90 == 0x90 {
@@ -516,13 +525,16 @@ class MsgPackScanner {
 
     private func scanMap() throws -> MsgPackValue {
         let c = data[off]
-        let n: Int = try { () -> Int in
+        let n: Int = { () -> Int in
             switch c {
-            case 0xDE, 0xDF: // map 16, map 32
-                let nn = 1 << (c - 0xDD)
-                let dd = self.data[self.off + 1 ..< self.off + 1 + nn]
-                self.off += nn + 1
-                return try Int(bigEndianUInt(dd))
+            case 0xDE: // map 16
+                let dd = self.data[self.off + 1 ..< self.off + 3]
+                self.off += 3
+                return Int(bigEndianFixedWidthInt(dd, as: UInt16.self))
+            case 0xDF: // map 32
+                let dd = self.data[self.off + 1 ..< self.off + 5]
+                self.off += 5
+                return Int(bigEndianFixedWidthInt(dd, as: UInt32.self))
             default:
                 self.off += 1
                 if c & 0x80 == 0x80 { // fixmap
