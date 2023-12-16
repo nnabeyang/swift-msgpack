@@ -474,11 +474,11 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     private let decoder: _MsgPackDecoder
     private(set) var codingPath: [CodingKey]
-    private var container: MsgPackValue
+    private var container: [MsgPackValue: MsgPackValue]
 
     init(referencing decoder: _MsgPackDecoder, container: MsgPackValue) {
         self.decoder = decoder
-        self.container = container
+        self.container = container.asDictionary()
         codingPath = decoder.codingPath
     }
 

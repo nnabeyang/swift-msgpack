@@ -43,13 +43,12 @@ private class _MsgPackEncoder: Encoder {
             return .array(array.values)
         }
         if let map: MsgPackFuture.RefMap = map {
-            var keys: [MsgPackValue] = []
-            var dict: [MsgPackValue: MsgPackValue] = [:]
+            var a: [MsgPackValue] = []
             for (k, v) in map.values {
-                keys.append(k)
-                dict[k] = v
+                a.append(k)
+                a.append(v)
             }
-            return .map(keys, dict)
+            return .map(a)
         }
         return singleValue
     }
@@ -128,15 +127,13 @@ private enum MsgPackFuture {
                 case let .nestedMap(map):
                     let values = map.values
                     let n = values.count
-                    var keys: [MsgPackValue] = []
-                    keys.reserveCapacity(n)
-                    var dict: [MsgPackValue: MsgPackValue] = [:]
-                    dict.reserveCapacity(n)
+                    var a: [MsgPackValue] = []
+                    a.reserveCapacity(n * 2)
                     for (k, v) in values {
-                        keys.append(k)
-                        dict[k] = v
+                        a.append(k)
+                        a.append(v)
                     }
-                    return .map(keys, dict)
+                    return .map(a)
                 case let .encoder(encoder):
                     return encoder.value
                 }
@@ -217,13 +214,12 @@ private enum MsgPackFuture {
                 case let .nestedArray(array):
                     return ($0, .array(array.values))
                 case let .nestedMap(map):
-                    var keys: [MsgPackValue] = []
-                    var dict: [MsgPackValue: MsgPackValue] = [:]
+                    var a: [MsgPackValue] = []
                     for (k, v) in map.values {
-                        keys.append(k)
-                        dict[k] = v
+                        a.append(k)
+                        a.append(v)
                     }
-                    return ($0, .map(keys, dict))
+                    return ($0, .map(a))
                 case let .encoder(encoder):
                     guard let value = encoder.value else {
                         return nil

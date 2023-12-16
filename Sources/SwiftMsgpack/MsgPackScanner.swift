@@ -102,7 +102,7 @@ indirect enum MsgPackValue {
     case literal(MsgPackValueLiteralType)
     case ext(Int8, Data)
     case array([MsgPackValue])
-    case map([MsgPackValue], [MsgPackValue: MsgPackValue])
+    case map([MsgPackValue])
     static let Nil = literal(.nil)
 }
 
@@ -117,8 +117,8 @@ extension MsgPackValue {
             return 1
         case let .array(a):
             return a.count
-        case let .map(keys, _):
-            return keys.count
+        case let .map(a):
+            return a.count / 2
         }
     }
 
@@ -132,14 +132,7 @@ extension MsgPackValue {
             return .array([self])
         case .array:
             return self
-        case let .map(keys, map):
-            var a: [MsgPackValue] = []
-            for key in keys {
-                if let value = map[key] {
-                    a.append(key)
-                    a.append(value)
-                }
-            }
+        case let .map(a):
             return .array(a)
         }
     }
@@ -147,24 +140,42 @@ extension MsgPackValue {
     func asMap() -> MsgPackValue {
         switch self {
         case .none, .literal, .ext:
-            return .map([], [:])
+            return .map([])
         case let .array(a):
             if a.count % 2 != 0 {
-                return .map([], [:])
+                return .map([])
             }
-            var keys: [MsgPackValue] = []
-            var m: [MsgPackValue: MsgPackValue] = [:]
-            let n = a.count / 2
-            m.reserveCapacity(n)
-            keys.reserveCapacity(n)
-            for i in 0 ..< n {
-                let key = a[i * 2]
-                keys.append(key)
-                m[key] = a[i * 2 + 1]
-            }
-            return .map(keys, m)
+            return .map(a)
         case .map:
             return self
+        }
+    }
+
+    func asDictionary() -> [MsgPackValue: MsgPackValue] {
+        switch self {
+        case .none, .literal, .ext:
+            return [:]
+        case let .array(a):
+            if a.count % 2 != 0 {
+                return [:]
+            }
+            let n = a.count / 2
+            var d = [MsgPackValue: MsgPackValue]()
+            for i in 0 ..< n {
+                let key = a[i * 2]
+                let value = a[i * 2 + 1]
+                d[key] = value
+            }
+            return d
+        case let .map(a):
+            let n = a.count / 2
+            var d = [MsgPackValue: MsgPackValue]()
+            for i in 0 ..< n {
+                let key = a[i * 2]
+                let value = a[i * 2 + 1]
+                d[key] = value
+            }
+            return d
         }
     }
 
@@ -174,24 +185,20 @@ extension MsgPackValue {
             return .none
         case let .array(a):
             return a[index]
-        case let .map(keys, map):
-            return map[keys[index]]!
+        case let .map(a):
+            return a[index * 2 + 1]
         }
     }
 
-    subscript(key: MsgPackValue) -> MsgPackValue? {
-        if case let .map(_, m) = self {
-            return m[key]
+    var keys: [Dictionary<MsgPackValue, MsgPackValue>.Key] {
+        if case let .map(a) = self {
+            var aa = [Dictionary<MsgPackValue, MsgPackValue>.Key]()
+            for i in 0 ..< a.count where i % 2 == 0 {
+                aa.append(a[i])
+            }
+            return aa
         } else {
-            return nil
-        }
-    }
-
-    var keys: Dictionary<MsgPackValue, MsgPackValue>.Keys {
-        if case let .map(_, m) = self {
-            return m.keys
-        } else {
-            return [:].keys
+            return []
         }
     }
 }
@@ -228,7 +235,7 @@ extension MsgPackValue: Hashable {
             return ln == rn && l == r
         case let (.array(l), .array(r)):
             return l == r
-        case let (.map(_, l), .map(_, r)):
+        case let (.map(l), .map(r)):
             return l == r
         default:
             return false
@@ -243,7 +250,7 @@ extension MsgPackValue: Hashable {
         case let .array(array):
             hasher.combine(0x2)
             hasher.combine(array)
-        case let .map(_, map):
+        case let .map(map):
             hasher.combine(0x3)
             hasher.combine(map)
         case let .ext(typeNo, data):
@@ -305,8 +312,8 @@ extension MsgPackValue {
                 for item in array {
                     writeValue(item, into: &bytes)
                 }
-            case let .map(keys, map):
-                let n = keys.count
+            case let .map(a):
+                let n = a.count / 2
                 if n <= UInt.maxUint4 {
                     bytes.append(contentsOf: [UInt8(0x80 + n)])
                 } else if n <= UInt16.max {
@@ -327,11 +334,11 @@ extension MsgPackValue {
                     bytes.append(contentsOf: bb)
                 }
 
-                for key in keys {
-                    if let value = map[key] {
-                        writeValue(key, into: &bytes)
-                        writeValue(value, into: &bytes)
-                    }
+                for i in 0 ..< n {
+                    let key = a[i * 2]
+                    let value = a[i * 2 + 1]
+                    writeValue(key, into: &bytes)
+                    writeValue(value, into: &bytes)
                 }
             default:
                 bytes.append(contentsOf: [])
@@ -524,15 +531,14 @@ class MsgPackScanner {
                 return 0
             }
         }()
-        var keys: [MsgPackValue] = []
-        var m: [MsgPackValue: MsgPackValue] = [:]
+        var a: [MsgPackValue] = []
         for _ in 0 ..< n {
             let key = try scan()
             let val = try scan()
-            m[key] = val
-            keys.append(key)
+            a.append(key)
+            a.append(val)
         }
-        return .map(keys, m)
+        return .map(a)
     }
 
     private func readIndex() -> Int {
