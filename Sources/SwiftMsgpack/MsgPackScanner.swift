@@ -3,8 +3,14 @@ import Foundation
 enum MsgPackValueLiteralType {
     case `nil`
     case bool(Bool)
-    case int(Data)
-    case uint(Data)
+    case int8(Data)
+    case int16(Data)
+    case int32(Data)
+    case int64(Data)
+    case uint8(Data)
+    case uint16(Data)
+    case uint32(Data)
+    case uint64(Data)
     case float(Data)
     case str(Data)
     case bin(Data)
@@ -14,9 +20,21 @@ enum MsgPackValueLiteralType {
             return .init([0xC0])
         case let .bool(v):
             return v ? .init([0xC3]) : .init([0xC2])
-        case let .int(v):
+        case let .int8(v):
             return v
-        case let .uint(v):
+        case let .int16(v):
+            return v
+        case let .int32(v):
+            return v
+        case let .int64(v):
+            return v
+        case let .uint8(v):
+            return v
+        case let .uint16(v):
+            return v
+        case let .uint32(v):
+            return v
+        case let .uint64(v):
             return v
         case let .float(v):
             return v
@@ -35,10 +53,22 @@ extension MsgPackValueLiteralType {
             return "nil"
         case .bool:
             return "bool"
-        case .int:
-            return "int"
-        case .uint:
-            return "uint"
+        case .int8:
+            return "int8"
+        case .int16:
+            return "int16"
+        case .int32:
+            return "int32"
+        case .int64:
+            return "int64"
+        case .uint8:
+            return "uint8"
+        case .uint16:
+            return "uint16"
+        case .uint32:
+            return "uint32"
+        case .uint64:
+            return "uint64"
         case .float:
             return "float"
         case .str:
@@ -56,9 +86,21 @@ extension MsgPackValueLiteralType: Hashable {
             return true
         case let (.bool(l), .bool(r)):
             return l == r
-        case let (.int(l), .int(r)):
+        case let (.int8(l), .int8(r)):
             return l == r
-        case let (.uint(l), .uint(r)):
+        case let (.int16(l), .int16(r)):
+            return l == r
+        case let (.int32(l), .int32(r)):
+            return l == r
+        case let (.int64(l), .int64(r)):
+            return l == r
+        case let (.uint8(l), .uint8(r)):
+            return l == r
+        case let (.uint16(l), .uint16(r)):
+            return l == r
+        case let (.uint32(l), .uint32(r)):
+            return l == r
+        case let (.uint64(l), .uint64(r)):
             return l == r
         case let (.float(l), .float(r)):
             return l == r
@@ -78,10 +120,28 @@ extension MsgPackValueLiteralType: Hashable {
         case let .bool(v):
             hasher.combine(0x2)
             hasher.combine(v)
-        case let .int(v):
+        case let .int8(v):
             hasher.combine(0x3)
             hasher.combine(v)
-        case let .uint(v):
+        case let .int16(v):
+            hasher.combine(0x3)
+            hasher.combine(v)
+        case let .int32(v):
+            hasher.combine(0x3)
+            hasher.combine(v)
+        case let .int64(v):
+            hasher.combine(0x3)
+            hasher.combine(v)
+        case let .uint8(v):
+            hasher.combine(0x4)
+            hasher.combine(v)
+        case let .uint16(v):
+            hasher.combine(0x4)
+            hasher.combine(v)
+        case let .uint32(v):
+            hasher.combine(0x4)
+            hasher.combine(v)
+        case let .uint64(v):
             hasher.combine(0x4)
             hasher.combine(v)
         case let .float(v):
@@ -478,42 +538,42 @@ class MsgPackScanner {
             let s = off + 1
             let e = s + 1 << 0
             off = e
-            return .literal(.uint(data[s ..< e]))
+            return .literal(.uint8(data[s ..< e]))
         case 0xCD: // uint16
             let s = off + 1
             let e = s + 1 << 1
             off = e
-            return .literal(.uint(data[s ..< e]))
+            return .literal(.uint16(data[s ..< e]))
         case 0xCE: // uint32
             let s = off + 1
             let e = s + 1 << 2
             off = e
-            return .literal(.uint(data[s ..< e]))
+            return .literal(.uint32(data[s ..< e]))
         case 0xCF: // uint64
             let s = off + 1
             let e = s + 1 << 3
             off = e
-            return .literal(.uint(data[s ..< e]))
+            return .literal(.uint64(data[s ..< e]))
         case 0xD0: // int8
             let s = off + 1
             let e = s + 1 << 0
             off = e
-            return .literal(.int(data[s ..< e]))
+            return .literal(.int8(data[s ..< e]))
         case 0xD1: // int16
             let s = off + 1
             let e = s + 1 << 1
             off = e
-            return .literal(.int(data[s ..< e]))
+            return .literal(.int16(data[s ..< e]))
         case 0xD2: // int32
             let s = off + 1
             let e = s + 1 << 2
             off = e
-            return .literal(.int(data[s ..< e]))
+            return .literal(.int32(data[s ..< e]))
         case 0xD3: // int64
             let s = off + 1
             let e = s + 1 << 3
             off = e
-            return .literal(.int(data[s ..< e]))
+            return .literal(.int64(data[s ..< e]))
         case 0xD4: // fixext1
             let typeNo = Int8(truncatingIfNeeded: data[off + 1])
 
@@ -572,7 +632,7 @@ class MsgPackScanner {
         default:
             if c & 0xE0 == 0xE0 { // negative fixint
                 off += 1
-                return .literal(.int(.init([c])))
+                return .literal(.int8(.init([c])))
             }
             if c & 0xA0 == 0xA0 { // fixstr
                 let s = off + 1
@@ -582,7 +642,7 @@ class MsgPackScanner {
             }
             if c & 0x80 == 0 { // fixint
                 off += 1
-                return .literal(.uint(.init([c])))
+                return .literal(.uint8(.init([c])))
             }
         }
         return .none
