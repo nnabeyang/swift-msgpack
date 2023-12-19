@@ -150,7 +150,9 @@ private enum MsgPackFuture {
 
         @inline(__always)
         func set(_ value: MsgPackValue, for key: MsgPackValue) {
-            keys.append(key)
+            if dict[key] == nil {
+                keys.append(key)
+            }
             dict[key] = .value(value)
         }
 
@@ -159,7 +161,11 @@ private enum MsgPackFuture {
             switch dict[key] {
             case let .nestedArray(array):
                 return array
-            case .none, .value:
+            case .value:
+                let array: MsgPackFuture.RefArray = .init()
+                dict[key] = .nestedArray(array)
+                return array
+            case .none:
                 let array: MsgPackFuture.RefArray = .init()
                 dict[key] = .nestedArray(array)
                 keys.append(key)
@@ -176,7 +182,11 @@ private enum MsgPackFuture {
             switch dict[key] {
             case let .nestedMap(map):
                 return map
-            case .none, .value:
+            case .value:
+                let map: MsgPackFuture.RefMap = .init()
+                dict[key] = .nestedMap(map)
+                return map
+            case .none:
                 let map: MsgPackFuture.RefMap = .init()
                 dict[key] = .nestedMap(map)
                 keys.append(key)
@@ -197,7 +207,9 @@ private enum MsgPackFuture {
                 preconditionFailure("For key \"\(key)\" a keyed container has already been created.")
             case .nestedArray:
                 preconditionFailure("For key \"\(key)\" a unkeyed container has already been created.")
-            case .none, .value:
+            case .value:
+                dict[key] = .encoder(encoder)
+            case .none:
                 dict[key] = .encoder(encoder)
                 keys.append(key)
             }
