@@ -142,32 +142,32 @@ private enum MsgPackFuture {
     }
 
     class RefMap {
-        private(set) var keys: [MsgPackValue] = []
-        private(set) var dict: [MsgPackValue: MsgPackFuture] = [:]
+        private(set) var keys: [MsgPackStringKey] = []
+        private(set) var dict: [String: MsgPackFuture] = [:]
         init() {
             dict.reserveCapacity(20)
         }
 
         @inline(__always)
-        func set(_ value: MsgPackValue, for key: MsgPackValue) {
-            if dict[key] == nil {
+        func set(_ value: MsgPackValue, for key: MsgPackStringKey) {
+            if dict[key.stringValue] == nil {
                 keys.append(key)
             }
-            dict[key] = .value(value)
+            dict[key.stringValue] = .value(value)
         }
 
         @inline(__always)
-        func setArray(for key: MsgPackValue) -> RefArray {
-            switch dict[key] {
+        func setArray(for key: MsgPackStringKey) -> RefArray {
+            switch dict[key.stringValue] {
             case let .nestedArray(array):
                 return array
             case .value:
                 let array: MsgPackFuture.RefArray = .init()
-                dict[key] = .nestedArray(array)
+                dict[key.stringValue] = .nestedArray(array)
                 return array
             case .none:
                 let array: MsgPackFuture.RefArray = .init()
-                dict[key] = .nestedArray(array)
+                dict[key.stringValue] = .nestedArray(array)
                 keys.append(key)
                 return array
             case .nestedMap:
@@ -178,17 +178,17 @@ private enum MsgPackFuture {
         }
 
         @inline(__always)
-        func setMap(for key: MsgPackValue) -> RefMap {
-            switch dict[key] {
+        func setMap(for key: MsgPackStringKey) -> RefMap {
+            switch dict[key.stringValue] {
             case let .nestedMap(map):
                 return map
             case .value:
                 let map: MsgPackFuture.RefMap = .init()
-                dict[key] = .nestedMap(map)
+                dict[key.stringValue] = .nestedMap(map)
                 return map
             case .none:
                 let map: MsgPackFuture.RefMap = .init()
-                dict[key] = .nestedMap(map)
+                dict[key.stringValue] = .nestedMap(map)
                 keys.append(key)
                 return map
             case .nestedArray:
@@ -199,8 +199,8 @@ private enum MsgPackFuture {
         }
 
         @inline(__always)
-        func set(_ encoder: _MsgPackEncoder, for key: MsgPackValue) {
-            switch dict[key] {
+        func set(_ encoder: _MsgPackEncoder, for key: MsgPackStringKey) {
+            switch dict[key.stringValue] {
             case .encoder:
                 preconditionFailure("For key \"\(key)\" an encoder has already been created.")
             case .nestedMap:
@@ -208,35 +208,34 @@ private enum MsgPackFuture {
             case .nestedArray:
                 preconditionFailure("For key \"\(key)\" a unkeyed container has already been created.")
             case .value:
-                dict[key] = .encoder(encoder)
+                dict[key.stringValue] = .encoder(encoder)
             case .none:
-                dict[key] = .encoder(encoder)
+                dict[key.stringValue] = .encoder(encoder)
                 keys.append(key)
             }
         }
 
         var values: [(MsgPackValue, MsgPackValue)] {
             keys.compactMap {
-                guard let value = self.dict[$0] else {
-                    return nil
-                }
-                switch value {
+                switch dict[$0.stringValue] {
                 case let .value(value):
-                    return ($0, value)
+                    return ($0.msgPackValue, value)
                 case let .nestedArray(array):
-                    return ($0, .array(array.values))
+                    return ($0.msgPackValue, .array(array.values))
                 case let .nestedMap(map):
                     var a: [MsgPackValue] = []
                     for (k, v) in map.values {
                         a.append(k)
                         a.append(v)
                     }
-                    return ($0, .map(a))
+                    return ($0.msgPackValue, .map(a))
                 case let .encoder(encoder):
                     guard let value = encoder.value else {
                         return nil
                     }
-                    return ($0, value)
+                    return ($0.msgPackValue, value)
+                case .none:
+                    return nil
                 }
             }
         }
@@ -380,6 +379,10 @@ private extension _SpecialTreatmentEncoder {
 
     func wrapBool(_ value: Bool) -> MsgPackValue {
         .literal(.bool(value))
+    }
+
+    func wrapStringKey(_ value: String, for key: CodingKey?) throws -> MsgPackStringKey {
+        try MsgPackStringKey(stringValue: value, msgPackValue: wrapString(value, for: key))
     }
 
     func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackValue {
@@ -735,17 +738,17 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
     }
 
     func encodeNil(forKey key: Key) throws {
-        map.set(.Nil, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(.Nil, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func encode(_ value: Bool, forKey key: Key) throws {
         let value = encoder.wrapBool(value)
-        map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func encode(_ value: String, forKey key: Key) throws {
         let value = try encoder.wrapString(value, for: key)
-        map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func encode(_ value: Double, forKey key: Key) throws {
@@ -798,48 +801,48 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
 
     func encode<T>(_ value: T, forKey key: Key) throws where T: Encodable {
         let encoded = try encoder.wrapEncodable(value, for: key)
-        map.set(encoded ?? .Nil, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(encoded ?? .Nil, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func nestedContainer<NestedKey>(keyedBy _: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> where NestedKey: CodingKey {
         let newPath = codingPath + [key]
-        let map: MsgPackFuture.RefMap = map.setMap(for: try! encoder.wrapString(key.stringValue, for: key))
+        let map: MsgPackFuture.RefMap = map.setMap(for: try! encoder.wrapStringKey(key.stringValue, for: key))
         let nestedContainer = MsgPackKeyedEncodingContainer<NestedKey>(referencing: encoder, map: map, codingPath: newPath)
         return KeyedEncodingContainer(nestedContainer)
     }
 
     func nestedUnkeyedContainer(forKey key: Self.Key) -> UnkeyedEncodingContainer {
         let newPath = codingPath + [key]
-        let array: MsgPackFuture.RefArray = map.setArray(for: try! encoder.wrapString(key.stringValue, for: key))
+        let array: MsgPackFuture.RefArray = map.setArray(for: try! encoder.wrapStringKey(key.stringValue, for: key))
         let nestedContainer = MsgPackUnkeyedEncodingContainer(referencing: encoder, array: array, codingPath: newPath)
         return nestedContainer
     }
 
     func superEncoder() -> Encoder {
         let newEncoder = encoder.getEncoder(for: MsgPackKey.super)
-        map.set(newEncoder, for: try! encoder.wrapString(MsgPackKey.super.stringValue, for: nil))
+        map.set(newEncoder, for: try! encoder.wrapStringKey(MsgPackKey.super.stringValue, for: nil))
         return newEncoder
     }
 
     func superEncoder(forKey key: Key) -> Encoder {
         let newEncoder = encoder.getEncoder(for: key)
-        map.set(newEncoder, for: try! encoder.wrapString(key.stringValue, for: key))
+        map.set(newEncoder, for: try! encoder.wrapStringKey(key.stringValue, for: key))
         return newEncoder
     }
 
     private func encodeFloat<T: FloatingPoint & DataNumber>(_ value: T, for key: Key) throws {
         let value = try encoder.wrapFloat(value, for: nil)
-        map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     private func encodeInt<T: SignedInteger>(_ value: T, for key: Key) throws {
         let value = try encoder.wrapInt(value, for: key)
-        map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     private func encodeUInt<T: UnsignedInteger>(_ value: T, forKey key: Key) throws {
         let value = try encoder.wrapUInt(value, for: key)
-        map.set(value, for: try encoder.wrapString(key.stringValue, for: key))
+        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
     }
 }
 

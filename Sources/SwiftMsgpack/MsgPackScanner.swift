@@ -167,6 +167,11 @@ extension MsgPackValueLiteralType: Hashable {
     }
 }
 
+struct MsgPackStringKey {
+    let stringValue: String
+    let msgPackValue: MsgPackValue
+}
+
 indirect enum MsgPackValue {
     case none
     case literal(MsgPackValueLiteralType)
