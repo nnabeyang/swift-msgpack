@@ -857,36 +857,6 @@ internal func bigEndianFixedWidthInt<T: FixedWidthInteger>(_ data: Data, as _: T
     T(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: T.self).pointee ?? 0 })
 }
 
-internal func bigEndianUInt(_ data: Data) throws -> UInt {
-    switch data.count {
-    case 1:
-        return UInt(UInt8(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: UInt8.self).pointee ?? 0 }))
-    case 2:
-        return UInt(UInt16(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: UInt16.self).pointee ?? 0 }))
-    case 4:
-        return UInt(UInt32(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: UInt32.self).pointee ?? 0 }))
-    case 8:
-        return UInt(UInt64(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: UInt64.self).pointee ?? 0 }))
-    default:
-        throw MsgPackDecodingError.dataCorrupted
-    }
-}
-
-internal func bigEndianInt(_ data: Data) throws -> Int {
-    switch data.count {
-    case 1:
-        return Int(Int8(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int8.self).pointee ?? 0 }))
-    case 2:
-        return Int(Int16(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int16.self).pointee ?? 0 }))
-    case 4:
-        return Int(Int32(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int32.self).pointee ?? 0 }))
-    case 8:
-        return Int(Int64(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: Int64.self).pointee ?? 0 }))
-    default:
-        throw MsgPackDecodingError.dataCorrupted
-    }
-}
-
 private extension Int {
     static let fixMax = 0x7F
     static let fixMin = -0x20
