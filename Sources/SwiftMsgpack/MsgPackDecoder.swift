@@ -106,8 +106,15 @@ private extension _MsgPackDecoder {
         if value == .Nil {
             return nil
         }
-        if case let .literal(.float(v)) = value {
-            return try type.init(data: v)
+        if case let .literal(f) = value {
+            switch f {
+            case let .float32(v):
+                return try type.init(data: v)
+            case let .float64(v):
+                return try type.init(data: v)
+            default:
+                break
+            }
         }
 
         throw DecodingError.typeMismatch(type, DecodingError.Context(

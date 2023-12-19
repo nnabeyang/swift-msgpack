@@ -11,7 +11,8 @@ enum MsgPackValueLiteralType {
     case uint16(Data)
     case uint32(Data)
     case uint64(Data)
-    case float(Data)
+    case float32(Data)
+    case float64(Data)
     case str(Data)
     case bin(Data)
     var data: Data {
@@ -36,7 +37,9 @@ enum MsgPackValueLiteralType {
             return v
         case let .uint64(v):
             return v
-        case let .float(v):
+        case let .float32(v):
+            return v
+        case let .float64(v):
             return v
         case let .str(v):
             return v
@@ -69,8 +72,10 @@ extension MsgPackValueLiteralType {
             return "uint32"
         case .uint64:
             return "uint64"
-        case .float:
-            return "float"
+        case .float32:
+            return "float32"
+        case .float64:
+            return "float64"
         case .str:
             return "str"
         case .bin:
@@ -102,7 +107,9 @@ extension MsgPackValueLiteralType: Hashable {
             return l == r
         case let (.uint64(l), .uint64(r)):
             return l == r
-        case let (.float(l), .float(r)):
+        case let (.float32(l), .float32(r)):
+            return l == r
+        case let (.float64(l), .float64(r)):
             return l == r
         case let (.str(l), .str(r)):
             return l == r
@@ -144,7 +151,10 @@ extension MsgPackValueLiteralType: Hashable {
         case let .uint64(v):
             hasher.combine(0x4)
             hasher.combine(v)
-        case let .float(v):
+        case let .float32(v):
+            hasher.combine(0x5)
+            hasher.combine(v)
+        case let .float64(v):
             hasher.combine(0x5)
             hasher.combine(v)
         case let .str(v):
@@ -528,12 +538,12 @@ class MsgPackScanner {
             let s = off + 1
             let e = s + 1 << 2
             off = e
-            return .literal(.float(data[s ..< e]))
+            return .literal(.float32(data[s ..< e]))
         case 0xCB: // float64
             let s = off + 1
             let e = s + 1 << 3
             off = e
-            return .literal(.float(data[s ..< e]))
+            return .literal(.float64(data[s ..< e]))
         case 0xCC: // uint8
             let s = off + 1
             let e = s + 1 << 0

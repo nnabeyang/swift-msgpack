@@ -243,12 +243,12 @@ private extension _SpecialTreatmentEncoder {
         if bits.count == 4 {
             data.append(contentsOf: [0xCA])
             data.append(bits)
-            return .literal(.float(data))
+            return .literal(.float32(data))
         }
         if bits.count == 8 {
             data.append(contentsOf: [0xCB])
             data.append(bits)
-            return .literal(.float(data))
+            return .literal(.float64(data))
         }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
