@@ -177,33 +177,14 @@ indirect enum MsgPackValue {
 }
 
 extension MsgPackValue {
-    var count: Int {
+    func asArray() -> [MsgPackValue] {
         switch self {
         case .none:
-            return 0
-        case .literal:
-            return 1
-        case .ext:
-            return 1
-        case let .array(a):
-            return a.count
-        case let .map(a):
-            return a.count / 2
-        }
-    }
-
-    func asArray() -> MsgPackValue {
-        switch self {
-        case .none:
-            return .array([])
-        case .literal:
-            return .array([self])
-        case .ext:
-            return .array([self])
-        case .array:
-            return self
-        case let .map(a):
-            return .array(a)
+            return []
+        case .literal, .ext:
+            return [self]
+        case let .array(a), let .map(a):
+            return a
         }
     }
 
@@ -246,29 +227,6 @@ extension MsgPackValue {
                 d[key] = value
             }
             return d
-        }
-    }
-
-    subscript(index: Int) -> MsgPackValue {
-        switch self {
-        case .none, .literal, .ext:
-            return .none
-        case let .array(a):
-            return a[index]
-        case let .map(a):
-            return a[index * 2 + 1]
-        }
-    }
-
-    var keys: [Dictionary<MsgPackValue, MsgPackValue>.Key] {
-        if case let .map(a) = self {
-            var aa = [Dictionary<MsgPackValue, MsgPackValue>.Key]()
-            for i in 0 ..< a.count where i % 2 == 0 {
-                aa.append(a[i])
-            }
-            return aa
-        } else {
-            return []
         }
     }
 }

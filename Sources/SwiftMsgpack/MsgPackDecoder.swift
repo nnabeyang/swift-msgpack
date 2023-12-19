@@ -54,10 +54,7 @@ private class _MsgPackDecoder: Decoder {
 
     func unkeyedContainer() throws -> UnkeyedDecodingContainer {
         switch value {
-        case .array: break
-        case .none: break
-        case .map:
-            value = value.asArray()
+        case .array, .map, .none: break
         default:
             throw DecodingError.typeMismatch([MsgPackValue].self, DecodingError.Context(
                 codingPath: codingPath,
@@ -525,13 +522,13 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     private let decoder: _MsgPackDecoder
     private(set) var codingPath: [CodingKey]
     public private(set) var currentIndex: Int
-    private var container: MsgPackValue
+    private var container: [MsgPackValue]
 
     init(referencing decoder: _MsgPackDecoder, container: MsgPackValue) {
         self.decoder = decoder
         codingPath = decoder.codingPath
         currentIndex = 0
-        self.container = container
+        self.container = container.asArray()
     }
 
     var count: Int? {
