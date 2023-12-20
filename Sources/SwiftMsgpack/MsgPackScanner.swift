@@ -15,38 +15,6 @@ enum MsgPackValueLiteralType {
     case float64(Data)
     case str(Data)
     case bin(Data)
-    var data: Data {
-        switch self {
-        case .nil:
-            return .init([0xC0])
-        case let .bool(v):
-            return v ? .init([0xC3]) : .init([0xC2])
-        case let .int8(v):
-            return v
-        case let .int16(v):
-            return v
-        case let .int32(v):
-            return v
-        case let .int64(v):
-            return v
-        case let .uint8(v):
-            return v
-        case let .uint16(v):
-            return v
-        case let .uint32(v):
-            return v
-        case let .uint64(v):
-            return v
-        case let .float32(v):
-            return v
-        case let .float64(v):
-            return v
-        case let .str(v):
-            return v
-        case let .bin(v):
-            return v
-        }
-    }
 }
 
 extension MsgPackValueLiteralType {
@@ -169,7 +137,7 @@ extension MsgPackValueLiteralType: Hashable {
 
 struct MsgPackStringKey {
     let stringValue: String
-    let msgPackValue: MsgPackValue
+    let msgPackValue: MsgPackEncodedValue
 }
 
 indirect enum MsgPackValue {
@@ -190,20 +158,6 @@ extension MsgPackValue {
             return [self]
         case let .array(a), let .map(a):
             return a
-        }
-    }
-
-    func asMap() -> MsgPackValue {
-        switch self {
-        case .none, .literal, .ext:
-            return .map([])
-        case let .array(a):
-            if a.count % 2 != 0 {
-                return .map([])
-            }
-            return .map(a)
-        case .map:
-            return self
         }
     }
 
@@ -298,16 +252,15 @@ extension MsgPackValue: Hashable {
 
 extension MsgPackValue {
     struct Writer {
-        func writeValue(_ value: MsgPackValue) -> [UInt8] {
+        func writeValue(_ value: MsgPackEncodedValue) -> [UInt8] {
             var bytes: [UInt8] = .init()
             writeValue(value, into: &bytes)
             return bytes
         }
 
-        private func writeValue(_ value: MsgPackValue, into bytes: inout [UInt8]) {
+        private func writeValue(_ value: MsgPackEncodedValue, into bytes: inout [UInt8]) {
             switch value {
-            case let .literal(v):
-                let data = v.data
+            case let .literal(data):
                 let bs: [UInt8] = data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) -> [UInt8] in
                     let unsafeBufferPointer = pointer.bindMemory(to: UInt8.self)
                     let unsafePointer = unsafeBufferPointer.baseAddress!

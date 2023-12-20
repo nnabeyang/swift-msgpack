@@ -7,18 +7,54 @@ extension Dictionary: _MsgPackDictionaryEncodableMarker where Key: Encodable, Va
 open class MsgPackEncoder {
     public init() {}
     open func encode<T: Encodable>(_ value: T) throws -> Data {
-        let value: MsgPackValue = try encodeAsMsgPackValue(value)
+        let value: MsgPackEncodedValue = try encodeAsMsgPackValue(value)
         let writer = MsgPackValue.Writer()
         let bytes = writer.writeValue(value)
         return Data(bytes)
     }
 
-    func encodeAsMsgPackValue<T: Encodable>(_ value: T) throws -> MsgPackValue {
+    func encodeAsMsgPackValue<T: Encodable>(_ value: T) throws -> MsgPackEncodedValue {
         let encoder = _MsgPackEncoder(codingPath: [])
         guard let result = try encoder.wrapEncodable(value, for: CodingKey?.none) else {
             throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: [], debugDescription: "Top-level \(T.self) did not encode any values."))
         }
         return result
+    }
+}
+
+indirect enum MsgPackEncodedValue: Hashable {
+    case none
+    case literal([UInt8])
+    case ext(Int8, [UInt8])
+    case array([MsgPackEncodedValue])
+    case map([MsgPackEncodedValue])
+
+    static let Nil = literal([0xC0])
+
+    var debugDataTypeDescription: String {
+        switch self {
+        case .none: return "nil"
+        case .literal: return "literal"
+        case .ext: return "ext"
+        case .array: return "array"
+        case .map: return "map"
+        }
+    }
+}
+
+extension MsgPackEncodedValue {
+    func asMap() -> MsgPackEncodedValue {
+        switch self {
+        case .none, .literal, .ext:
+            return .map([])
+        case let .array(a):
+            if a.count % 2 != 0 {
+                return .map([])
+            }
+            return .map(a)
+        case .map:
+            return self
+        }
     }
 }
 
@@ -35,15 +71,15 @@ private class _MsgPackEncoder: Encoder {
         self.codingPath = codingPath
     }
 
-    var singleValue: MsgPackValue?
+    var singleValue: MsgPackEncodedValue?
     var array: MsgPackFuture.RefArray?
     var map: MsgPackFuture.RefMap?
-    var value: MsgPackValue? {
+    var value: MsgPackEncodedValue? {
         if let array: MsgPackFuture.RefArray = array {
             return .array(array.values)
         }
         if let map: MsgPackFuture.RefMap = map {
-            var a: [MsgPackValue] = []
+            var a: [MsgPackEncodedValue] = []
             for (k, v) in map.values {
                 a.append(k)
                 a.append(v)
@@ -81,7 +117,7 @@ extension _MsgPackEncoder: _SpecialTreatmentEncoder {
 }
 
 private enum MsgPackFuture {
-    case value(MsgPackValue)
+    case value(MsgPackEncodedValue)
     case encoder(_MsgPackEncoder)
     case nestedArray(RefArray)
     case nestedMap(RefMap)
@@ -94,7 +130,7 @@ private enum MsgPackFuture {
         }
 
         @inline(__always)
-        func append(_ element: MsgPackValue) {
+        func append(_ element: MsgPackEncodedValue) {
             array.append(.value(element))
         }
 
@@ -117,7 +153,7 @@ private enum MsgPackFuture {
             return map
         }
 
-        var values: [MsgPackValue] {
+        var values: [MsgPackEncodedValue] {
             array.compactMap { future in
                 switch future {
                 case let .value(value):
@@ -127,7 +163,7 @@ private enum MsgPackFuture {
                 case let .nestedMap(map):
                     let values = map.values
                     let n = values.count
-                    var a: [MsgPackValue] = []
+                    var a: [MsgPackEncodedValue] = []
                     a.reserveCapacity(n * 2)
                     for (k, v) in values {
                         a.append(k)
@@ -149,7 +185,7 @@ private enum MsgPackFuture {
         }
 
         @inline(__always)
-        func set(_ value: MsgPackValue, for key: MsgPackStringKey) {
+        func set(_ value: MsgPackEncodedValue, for key: MsgPackStringKey) {
             if dict[key.stringValue] == nil {
                 keys.append(key)
             }
@@ -215,7 +251,7 @@ private enum MsgPackFuture {
             }
         }
 
-        var values: [(MsgPackValue, MsgPackValue)] {
+        var values: [(MsgPackEncodedValue, MsgPackEncodedValue)] {
             keys.compactMap {
                 switch dict[$0.stringValue] {
                 case let .value(value):
@@ -223,7 +259,7 @@ private enum MsgPackFuture {
                 case let .nestedArray(array):
                     return ($0.msgPackValue, .array(array.values))
                 case let .nestedMap(map):
-                    var a: [MsgPackValue] = []
+                    var a: [MsgPackEncodedValue] = []
                     for (k, v) in map.values {
                         a.append(k)
                         a.append(v)
@@ -248,18 +284,18 @@ private protocol _SpecialTreatmentEncoder {
 }
 
 private extension _SpecialTreatmentEncoder {
-    func wrapFloat<F: FloatingPoint & DataNumber>(_ value: F, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    func wrapFloat<F: FloatingPoint & DataNumber>(_ value: F, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
         var data: Data = .init()
         let bits = value.data
         if bits.count == 4 {
             data.append(contentsOf: [0xCA])
             data.append(bits)
-            return .literal(.float32(data))
+            return .literal([UInt8](data))
         }
         if bits.count == 8 {
             data.append(contentsOf: [0xCB])
             data.append(bits)
-            return .literal(.float64(data))
+            return .literal([UInt8](data))
         }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
@@ -273,13 +309,13 @@ private extension _SpecialTreatmentEncoder {
         ))
     }
 
-    func wrapInt<T: SignedInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    func wrapInt<T: SignedInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
         if Int.fixMin <= value, value <= Int.fixMax {
             let v: Int8 = .init(value)
             let bits = withUnsafePointer(to: v.bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
             }
-            return .literal(.int8(.init(bits)))
+            return .literal([UInt8](bits))
         }
         if Int8.min <= value, value <= Int8.max {
             let v: Int8 = .init(value)
@@ -288,7 +324,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD0])
             data.append(bits)
-            return .literal(.int8(data))
+            return .literal([UInt8](data))
         }
         if Int16.min <= value, value <= Int16.max {
             let v: Int16 = .init(value)
@@ -297,7 +333,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD1])
             data.append(bits)
-            return .literal(.int16(data))
+            return .literal([UInt8](data))
         }
         if Int32.min <= value, value <= Int32.max {
             let v: Int32 = .init(value)
@@ -306,7 +342,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD2])
             data.append(bits)
-            return .literal(.int32(data))
+            return .literal([UInt8](data))
         }
         if Int64.min <= value, value <= Int64.max {
             let v: Int64 = .init(value)
@@ -315,7 +351,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xD3])
             data.append(bits)
-            return .literal(.int64(data))
+            return .literal([UInt8](data))
         }
 
         let path: [CodingKey]
@@ -330,12 +366,12 @@ private extension _SpecialTreatmentEncoder {
         ))
     }
 
-    func wrapUInt<T: UnsignedInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    func wrapUInt<T: UnsignedInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
         if value <= Int.fixMax {
-            return .literal(.uint8(.init([UInt8(value)])))
+            return .literal([UInt8(value)])
         }
         if value <= UInt8.max {
-            return .literal(.uint8(.init([0xCC, UInt8(value)])))
+            return .literal([0xCC, UInt8(value)])
         }
         if value <= UInt16.max {
             let v: UInt16 = .init(value)
@@ -344,7 +380,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xCD])
             data.append(bits)
-            return .literal(.uint16(data))
+            return .literal([UInt8](data))
         }
         if value <= UInt32.max {
             let v: UInt32 = .init(value)
@@ -353,7 +389,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xCE])
             data.append(bits)
-            return .literal(.uint32(data))
+            return .literal([UInt8](data))
         }
         if value <= UInt64.max {
             let v: UInt64 = .init(value)
@@ -362,7 +398,7 @@ private extension _SpecialTreatmentEncoder {
             }
             var data = Data([0xCF])
             data.append(bits)
-            return .literal(.uint64(data))
+            return .literal([UInt8](data))
         }
 
         let path: [CodingKey]
@@ -377,38 +413,38 @@ private extension _SpecialTreatmentEncoder {
         ))
     }
 
-    func wrapBool(_ value: Bool) -> MsgPackValue {
-        .literal(.bool(value))
+    func wrapBool(_ value: Bool) -> MsgPackEncodedValue {
+        .literal(value ? [0xC3] : [0xC2])
     }
 
     func wrapStringKey(_ value: String, for key: CodingKey?) throws -> MsgPackStringKey {
         try MsgPackStringKey(stringValue: value, msgPackValue: wrapString(value, for: key))
     }
 
-    func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
         let n = value.utf8.count
         if n <= UInt.maxUint5 {
             var bb: [UInt8] = [UInt8(0xA0 + n)]
             bb.append(contentsOf: value.utf8)
-            return .literal(.str(.init(bb)))
+            return .literal(bb)
         } else if n <= UInt8.max {
             var bb: [UInt8] = [0xD9, UInt8(n)]
             bb.append(contentsOf: value.utf8)
-            return .literal(.str(.init(bb)))
+            return .literal(bb)
         } else if n <= UInt16.max {
             var bb: [UInt8] = [0xDA]
             bb.append(contentsOf: withUnsafePointer(to: UInt16(n).bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
             })
             bb.append(contentsOf: value.utf8)
-            return .literal(.str(.init(bb)))
+            return .literal(bb)
         } else if n <= UInt32.max {
             var bb: [UInt8] = [0xDB]
             bb.append(contentsOf: withUnsafePointer(to: UInt32(n).bigEndian) {
                 Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
             })
             bb.append(contentsOf: value.utf8)
-            return .literal(.str(.init(bb)))
+            return .literal(bb)
         }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
@@ -422,7 +458,7 @@ private extension _SpecialTreatmentEncoder {
         ))
     }
 
-    func wrapEncodable<E: Encodable>(_ encodable: E, for additionalKey: CodingKey?) throws -> MsgPackValue? {
+    func wrapEncodable<E: Encodable>(_ encodable: E, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue? {
         let encoder = getEncoder(for: additionalKey)
         switch encodable {
         case let data as Data:
@@ -445,17 +481,17 @@ private extension _SpecialTreatmentEncoder {
         return encoder.value
     }
 
-    func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackValue {
+    func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackEncodedValue {
         let value = [UInt8](data)
         let n = value.count
         var bb: [UInt8] = []
         bb.append(0xC4)
         bb.append(UInt8(n))
         bb.append(contentsOf: value)
-        return .literal(.bin(.init(bb)))
+        return .literal(bb)
     }
 
-    func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackValue {
+    func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
         var d: Data = .init()
         let data = try encodable.encodeMsgPack()
         let n = data.count
@@ -503,7 +539,7 @@ private extension _SpecialTreatmentEncoder {
             Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
         })
         d.append(data)
-        return .ext(encodable.type, d)
+        return .ext(encodable.type, [UInt8](d))
     }
 
     func getEncoder(for additionalKey: CodingKey?) -> _MsgPackEncoder {
