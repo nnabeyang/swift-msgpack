@@ -261,39 +261,17 @@ extension MsgPackValue {
         private func writeValue(_ value: MsgPackEncodedValue, into bytes: inout [UInt8]) {
             switch value {
             case let .literal(data):
-                let bs: [UInt8] = data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) -> [UInt8] in
-                    let unsafeBufferPointer = pointer.bindMemory(to: UInt8.self)
-                    let unsafePointer = unsafeBufferPointer.baseAddress!
-                    return [UInt8](UnsafeBufferPointer(start: unsafePointer, count: data.count))
-                }
-                bytes.append(contentsOf: bs)
+                bytes.append(contentsOf: data)
             case let .ext(_, data):
-                let bs: [UInt8] = data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) -> [UInt8] in
-                    let unsafeBufferPointer = pointer.bindMemory(to: UInt8.self)
-                    let unsafePointer = unsafeBufferPointer.baseAddress!
-                    return [UInt8](UnsafeBufferPointer(start: unsafePointer, count: data.count))
-                }
-                bytes.append(contentsOf: bs)
+                bytes.append(contentsOf: data)
             case let .array(array):
                 let n = array.count
                 if n <= UInt.maxUint4 {
                     bytes.append(contentsOf: [UInt8(0x90 + n)])
                 } else if n <= UInt16.max {
-                    var bb: [UInt8] = []
-                    bb.append(0xDC)
-                    let bits = withUnsafePointer(to: UInt16(n).bigEndian) {
-                        Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-                    }
-                    bb.append(contentsOf: bits)
-                    bytes.append(contentsOf: bb)
+                    bytes.append(contentsOf: [0xDC] + n.bigEndianBytes(as: UInt16.self))
                 } else {
-                    var bb: [UInt8] = []
-                    bb.append(0xDD)
-                    let bits = withUnsafePointer(to: UInt32(n).bigEndian) {
-                        Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-                    }
-                    bb.append(contentsOf: bits)
-                    bytes.append(contentsOf: bb)
+                    bytes.append(contentsOf: [0xDD] + n.bigEndianBytes(as: UInt32.self))
                 }
                 for item in array {
                     writeValue(item, into: &bytes)
@@ -303,21 +281,9 @@ extension MsgPackValue {
                 if n <= UInt.maxUint4 {
                     bytes.append(contentsOf: [UInt8(0x80 + n)])
                 } else if n <= UInt16.max {
-                    var bb: [UInt8] = []
-                    bb.append(0xDE)
-                    let bits = withUnsafePointer(to: UInt16(n).bigEndian) {
-                        Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-                    }
-                    bb.append(contentsOf: bits)
-                    bytes.append(contentsOf: bb)
+                    bytes.append(contentsOf: [0xDE] + n.bigEndianBytes(as: UInt16.self))
                 } else {
-                    var bb: [UInt8] = []
-                    bb.append(0xDF)
-                    let bits = withUnsafePointer(to: UInt32(n).bigEndian) {
-                        Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-                    }
-                    bb.append(contentsOf: bits)
-                    bytes.append(contentsOf: bb)
+                    bytes.append(contentsOf: [0xDF] + n.bigEndianBytes(as: UInt32.self))
                 }
 
                 for i in 0 ..< n {

@@ -217,8 +217,8 @@ struct Opacity: Equatable {
 
 extension Opacity: MsgPackCodable {
     var type: Int8 { 1 }
-    func encodeMsgPack() throws -> Data {
-        .init([a])
+    func encodeMsgPack() throws -> [UInt8] {
+        [a]
     }
 
     init(msgPack data: Data) throws {
@@ -234,8 +234,8 @@ struct Position: MsgPackEncodable {
         self.y = y
     }
 
-    func encodeMsgPack() throws -> Data {
-        .init([x, y])
+    func encodeMsgPack() throws -> [UInt8] {
+        [x, y]
     }
 
     let type: Int8 = 2
@@ -247,8 +247,8 @@ struct SS2: MsgPackEncodable {
         self.a = a
     }
 
-    func encodeMsgPack() throws -> Data {
-        Data(a.utf8)
+    func encodeMsgPack() throws -> [UInt8] {
+        [UInt8](a.utf8)
     }
 
     let type: Int8 = 3
@@ -260,8 +260,8 @@ struct Ext16: MsgPackEncodable {
         self.a = a
     }
 
-    func encodeMsgPack() throws -> Data {
-        .init(a)
+    func encodeMsgPack() throws -> [UInt8] {
+        a
     }
 
     let type: Int8 = 5
