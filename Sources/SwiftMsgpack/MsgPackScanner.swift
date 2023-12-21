@@ -597,10 +597,6 @@ class MsgPackScanner {
         return .map(a)
     }
 
-    private func readIndex() -> Int {
-        off - 1
-    }
-
     private func peekOpCode() -> MsgPackOpCode {
         if off < data.count {
             return MsgPackOpCode(ch: data[off])
