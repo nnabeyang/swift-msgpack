@@ -44,9 +44,9 @@ private class _MsgPackDecoder: Decoder {
 
     func container<Key>(keyedBy _: Key.Type) throws -> KeyedDecodingContainer<Key> where Key: CodingKey {
         guard case .map = value else {
-            throw DecodingError.typeMismatch([MsgPackValue: MsgPackValue].self, DecodingError.Context(
+            throw DecodingError.typeMismatch([String: Any].self, DecodingError.Context(
                 codingPath: codingPath,
-                debugDescription: "Expected to decode \([MsgPackValue: MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
+                debugDescription: "Expected to decode \([String: Any].self) but found \(value.debugDataTypeDescription) instead."
             ))
         }
         return KeyedDecodingContainer(MsgPackKeyedDecodingContainer<Key>(referencing: self, container: value))
@@ -56,9 +56,9 @@ private class _MsgPackDecoder: Decoder {
         switch value {
         case .array, .map, .none: break
         default:
-            throw DecodingError.typeMismatch([MsgPackValue].self, DecodingError.Context(
+            throw DecodingError.typeMismatch([Any].self, DecodingError.Context(
                 codingPath: codingPath,
-                debugDescription: "Expected to decode \([MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
+                debugDescription: "Expected to decode \([Any].self) but found \(value.debugDataTypeDescription) instead."
             ))
         }
 
