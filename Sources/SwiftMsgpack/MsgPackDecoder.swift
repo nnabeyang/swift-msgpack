@@ -767,25 +767,34 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     private let decoder: _MsgPackDecoder
     private(set) var codingPath: [CodingKey]
-    private var container: [MsgPackValue: MsgPackValue]
+    private var container: [String: MsgPackValue]
+
+    static func asDictionary(value msgPackValue: MsgPackValue, using decoder: _MsgPackDecoder) -> [String: MsgPackValue] {
+        var result = [String: MsgPackValue]()
+        for (keyvalue, value) in msgPackValue.asDictionary() {
+            guard let key = try? decoder.unbox(keyvalue, as: String.self) else {
+                continue
+            }
+            result[key]._setIfNil(to: value)
+        }
+
+        return result
+    }
 
     init(referencing decoder: _MsgPackDecoder, container: MsgPackValue) {
         self.decoder = decoder
-        self.container = container.asDictionary()
+        self.container = Self.asDictionary(value: container, using: decoder)
         codingPath = decoder.codingPath
     }
 
     var allKeys: [Key] {
         container.keys.compactMap {
-            guard let stringValue = try? decoder.unbox($0, as: String.self) else {
-                return nil
-            }
-            return Key(stringValue: stringValue)
+            Key(stringValue: $0)
         }
     }
 
     func contains(_ key: Key) -> Bool {
-        container[.init(stringLiteral: key.stringValue)] != nil
+        container[key.stringValue] != nil
     }
 
     func decodeNil(forKey key: Key) throws -> Bool {
@@ -887,7 +896,7 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     @inline(__always)
     private func getValue<LocalKey: CodingKey>(forKey key: LocalKey) throws -> MsgPackValue {
-        guard let value = container[.init(stringLiteral: key.stringValue)] else {
+        guard let value = container[key.stringValue] else {
             let context = DecodingError.Context(codingPath: codingPath, debugDescription: "No value assosiated with key \(key) (\"\(key.stringValue)\"")
             throw DecodingError.keyNotFound(key, context)
         }
@@ -1077,5 +1086,12 @@ extension MsgPackDecodingError {
             let context = DecodingError.Context(codingPath: codingPath, debugDescription: "Expected to decode \(type) but it failed")
             return DecodingError.dataCorrupted(context)
         }
+    }
+}
+
+private extension Optional {
+    mutating func _setIfNil(to value: Wrapped) {
+        guard _fastPath(self == nil) else { return }
+        self = value
     }
 }

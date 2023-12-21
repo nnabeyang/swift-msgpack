@@ -190,12 +190,6 @@ extension MsgPackValue {
     }
 }
 
-extension MsgPackValue: ExpressibleByStringLiteral {
-    init(stringLiteral value: String) {
-        self = .literal(.str(Data(value.utf8)))
-    }
-}
-
 extension MsgPackValue {
     var debugDataTypeDescription: String {
         switch self {
