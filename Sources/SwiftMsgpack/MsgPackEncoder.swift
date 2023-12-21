@@ -426,14 +426,28 @@ private extension _SpecialTreatmentEncoder {
         return encoder.value
     }
 
-    func wrapData(_ data: Data, for _: CodingKey?) throws -> MsgPackEncodedValue {
-        let value = [UInt8](data)
-        let n = value.count
-        var bb: [UInt8] = []
-        bb.append(0xC4)
-        bb.append(UInt8(n))
-        bb.append(contentsOf: value)
-        return .literal(bb)
+    func wrapData(_ data: Data, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
+        let n = data.count
+        if n <= UInt8.max {
+            let bits = [0xC4, UInt8(n)] + [UInt8](data)
+            return .literal(bits)
+        } else if n <= UInt16.max {
+            let bits = [0xC5] + n.bigEndianBytes(as: UInt16.self) + [UInt8](data)
+            return .literal(bits)
+        } else if n <= UInt32.max {
+            let bits = [0xC6] + n.bigEndianBytes(as: UInt32.self) + [UInt8](data)
+            return .literal(bits)
+        }
+        let path: [CodingKey]
+        if let additionalKey = additionalKey {
+            path = codingPath + [additionalKey]
+        } else {
+            path = codingPath
+        }
+        throw EncodingError.invalidValue(data, .init(
+            codingPath: path,
+            debugDescription: "Unable to encode Data.\(data) directly in MessagePack."
+        ))
     }
 
     func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
