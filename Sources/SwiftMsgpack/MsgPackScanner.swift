@@ -52,89 +52,6 @@ extension MsgPackValueLiteralType {
     }
 }
 
-extension MsgPackValueLiteralType: Hashable {
-    static func == (lhs: MsgPackValueLiteralType, rhs: MsgPackValueLiteralType) -> Bool {
-        switch (lhs, rhs) {
-        case (.nil, .nil):
-            return true
-        case let (.bool(l), .bool(r)):
-            return l == r
-        case let (.int8(l), .int8(r)):
-            return l == r
-        case let (.int16(l), .int16(r)):
-            return l == r
-        case let (.int32(l), .int32(r)):
-            return l == r
-        case let (.int64(l), .int64(r)):
-            return l == r
-        case let (.uint8(l), .uint8(r)):
-            return l == r
-        case let (.uint16(l), .uint16(r)):
-            return l == r
-        case let (.uint32(l), .uint32(r)):
-            return l == r
-        case let (.uint64(l), .uint64(r)):
-            return l == r
-        case let (.float32(l), .float32(r)):
-            return l == r
-        case let (.float64(l), .float64(r)):
-            return l == r
-        case let (.str(l), .str(r)):
-            return l == r
-        case let (.bin(l), .bin(r)):
-            return l == r
-        default:
-            return false
-        }
-    }
-
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .nil:
-            hasher.combine(0x1)
-        case let .bool(v):
-            hasher.combine(0x2)
-            hasher.combine(v)
-        case let .int8(v):
-            hasher.combine(0x3)
-            hasher.combine(v)
-        case let .int16(v):
-            hasher.combine(0x3)
-            hasher.combine(v)
-        case let .int32(v):
-            hasher.combine(0x3)
-            hasher.combine(v)
-        case let .int64(v):
-            hasher.combine(0x3)
-            hasher.combine(v)
-        case let .uint8(v):
-            hasher.combine(0x4)
-            hasher.combine(v)
-        case let .uint16(v):
-            hasher.combine(0x4)
-            hasher.combine(v)
-        case let .uint32(v):
-            hasher.combine(0x4)
-            hasher.combine(v)
-        case let .uint64(v):
-            hasher.combine(0x4)
-            hasher.combine(v)
-        case let .float32(v):
-            hasher.combine(0x5)
-            hasher.combine(v)
-        case let .float64(v):
-            hasher.combine(0x5)
-            hasher.combine(v)
-        case let .str(v):
-            hasher.combine(0x6)
-            hasher.combine(v)
-        case let .bin(v):
-            hasher.combine(0x7)
-            hasher.combine(v)
-        }
-    }
-}
-
 struct MsgPackStringKey {
     let stringValue: String
     let msgPackValue: MsgPackEncodedValue
@@ -146,7 +63,6 @@ indirect enum MsgPackValue {
     case ext(Int8, Data)
     case array([MsgPackValue])
     case map([MsgPackValue])
-    static let Nil = literal(.nil)
 }
 
 extension MsgPackValue {
@@ -161,29 +77,29 @@ extension MsgPackValue {
         }
     }
 
-    func asDictionary() -> [MsgPackValue: MsgPackValue] {
+    func asDictionary() -> [(MsgPackValue, MsgPackValue)] {
         switch self {
         case .none, .literal, .ext:
-            return [:]
+            return []
         case let .array(a):
             if a.count % 2 != 0 {
-                return [:]
+                return []
             }
             let n = a.count / 2
-            var d = [MsgPackValue: MsgPackValue]()
+            var d = [(MsgPackValue, MsgPackValue)]()
             for i in 0 ..< n {
                 let key = a[i * 2]
                 let value = a[i * 2 + 1]
-                d[key] = value
+                d.append((key, value))
             }
             return d
         case let .map(a):
             let n = a.count / 2
-            var d = [MsgPackValue: MsgPackValue]()
+            var d = [(MsgPackValue, MsgPackValue)]()
             for i in 0 ..< n {
                 let key = a[i * 2]
                 let value = a[i * 2 + 1]
-                d[key] = value
+                d.append((key, value))
             }
             return d
         }
@@ -203,43 +119,6 @@ extension MsgPackValue {
             return "an array"
         case .map:
             return "a map"
-        }
-    }
-}
-
-extension MsgPackValue: Hashable {
-    static func == (lhs: MsgPackValue, rhs: MsgPackValue) -> Bool {
-        switch (lhs, rhs) {
-        case let (.literal(l), .literal(r)):
-            return l == r
-        case let (.ext(ln, l), .ext(rn, r)):
-            return ln == rn && l == r
-        case let (.array(l), .array(r)):
-            return l == r
-        case let (.map(l), .map(r)):
-            return l == r
-        default:
-            return false
-        }
-    }
-
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case let .literal(data):
-            hasher.combine(0x1)
-            hasher.combine(data)
-        case let .array(array):
-            hasher.combine(0x2)
-            hasher.combine(array)
-        case let .map(map):
-            hasher.combine(0x3)
-            hasher.combine(map)
-        case let .ext(typeNo, data):
-            hasher.combine(0x4)
-            hasher.combine(typeNo)
-            hasher.combine(data)
-        case .none:
-            break
         }
     }
 }

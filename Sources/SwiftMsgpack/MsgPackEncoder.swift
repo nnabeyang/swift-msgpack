@@ -22,7 +22,7 @@ open class MsgPackEncoder {
     }
 }
 
-indirect enum MsgPackEncodedValue: Hashable {
+indirect enum MsgPackEncodedValue {
     case none
     case literal([UInt8])
     case ext(Int8, [UInt8])

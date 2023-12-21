@@ -72,11 +72,13 @@ private class _MsgPackDecoder: Decoder {
 
 private extension _MsgPackDecoder {
     func unbox(_ value: MsgPackValue, as type: Bool.Type) throws -> Bool? {
-        if value == .Nil {
-            return nil
-        }
-        if case let .literal(.bool(v)) = value {
-            return v
+        if case let .literal(value) = value {
+            switch value {
+            case let .bool(v): return v
+            case .nil: return nil
+            default:
+                break
+            }
         }
 
         throw DecodingError.typeMismatch(type, DecodingError.Context(
@@ -86,11 +88,15 @@ private extension _MsgPackDecoder {
     }
 
     func unbox(_ value: MsgPackValue, as type: String.Type) throws -> String? {
-        if value == .Nil {
-            return nil
-        }
-        if case let .literal(.str(v)) = value {
-            return String(data: v, encoding: .utf8)
+        if case let .literal(value) = value {
+            switch value {
+            case let .str(v):
+                return String(data: v, encoding: .utf8)
+            case .nil:
+                return nil
+            default:
+                break
+            }
         }
 
         throw DecodingError.typeMismatch(type, DecodingError.Context(
@@ -100,15 +106,14 @@ private extension _MsgPackDecoder {
     }
 
     func unboxFloat<T: BinaryFloatingPoint & DataNumber>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
-        if value == .Nil {
-            return nil
-        }
         if case let .literal(f) = value {
             switch f {
             case let .float32(v):
                 return try type.init(data: v)
             case let .float64(v):
                 return try type.init(data: v)
+            case .nil:
+                return nil
             default:
                 break
             }
@@ -422,9 +427,9 @@ extension _MsgPackDecoder {
             preconditionFailure("Must only be called of T implements _MsgPackDictionaryDecodableMarker")
         }
         guard case .map = value else {
-            throw DecodingError.typeMismatch([MsgPackValue: MsgPackValue].self, DecodingError.Context(
+            throw DecodingError.typeMismatch(T.self, DecodingError.Context(
                 codingPath: codingPath,
-                debugDescription: "Expected to decode \([MsgPackValue: MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
+                debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
             ))
         }
     }
@@ -454,7 +459,11 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
     }
 
     func decodeNil() -> Bool {
-        value == .Nil
+        if case .literal(.nil) = value {
+            return true
+        } else {
+            return false
+        }
     }
 
     func decode(_: Bool.Type) throws -> Bool {
@@ -541,7 +550,7 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
 
     mutating func decodeNil() throws -> Bool {
         let value = try getNextValue(ofType: Never.self)
-        if value == .Nil {
+        if case .literal(.nil) = value {
             currentIndex += 1
             return true
         }
@@ -799,7 +808,11 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     func decodeNil(forKey key: Key) throws -> Bool {
         let value = try getValue(forKey: key)
-        return value == .Nil
+        if case .literal(.nil) = value {
+            return true
+        } else {
+            return false
+        }
     }
 
     func decode(_ type: Bool.Type, forKey key: Key) throws -> Bool {
