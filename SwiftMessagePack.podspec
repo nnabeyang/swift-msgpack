@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "SwiftMessagePack"
-  s.version      = "0.3.1"
+  s.version      = "0.3.2"
   s.summary      = "swift-msgpack is a library of MessagePack encoder & decoder for Swift based on Codable."
   s.homepage              = "https://github.com/nnabeyang/swift-msgpack"
   s.license               = { :type => "MIT", :file => "LICENSE" }
