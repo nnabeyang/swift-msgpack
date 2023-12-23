@@ -109,9 +109,9 @@ private extension _MsgPackDecoder {
         if case let .literal(f) = value {
             switch f {
             case let .float32(v):
-                return try type.init(data: v)
+                return try T(Float(data: v))
             case let .float64(v):
-                return try type.init(data: v)
+                return try T(Double(data: v))
             case .nil:
                 return nil
             default:
