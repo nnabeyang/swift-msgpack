@@ -80,7 +80,9 @@ private class _MsgPackEncoder: Encoder {
         }
         if let map: MsgPackFuture.RefMap = map {
             var a: [MsgPackEncodedValue] = []
-            for (k, v) in map.values {
+            let values = map.values
+            a.reserveCapacity(values.count * 2)
+            for (k, v) in values {
                 a.append(k)
                 a.append(v)
             }
@@ -260,6 +262,8 @@ private enum MsgPackFuture {
                     return ($0.msgPackValue, .array(array.values))
                 case let .nestedMap(map):
                     var a: [MsgPackEncodedValue] = []
+                    let values = map.values
+                    a.reserveCapacity(values.count * 2)
                     for (k, v) in map.values {
                         a.append(k)
                         a.append(v)

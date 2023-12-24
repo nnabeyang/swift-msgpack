@@ -87,6 +87,7 @@ extension MsgPackValue {
             }
             let n = a.count / 2
             var d = [(MsgPackValue, MsgPackValue)]()
+            d.reserveCapacity(n * 2)
             for i in 0 ..< n {
                 let key = a[i * 2]
                 let value = a[i * 2 + 1]
@@ -96,6 +97,7 @@ extension MsgPackValue {
         case let .map(a):
             let n = a.count / 2
             var d = [(MsgPackValue, MsgPackValue)]()
+            d.reserveCapacity(n * 2)
             for i in 0 ..< n {
                 let key = a[i * 2]
                 let value = a[i * 2 + 1]
@@ -434,6 +436,7 @@ class MsgPackScanner {
             }
         }()
         var a: [MsgPackValue] = []
+        a.reserveCapacity(n)
         for _ in 0 ..< n {
             a.append(try scan())
         }
@@ -461,6 +464,7 @@ class MsgPackScanner {
             }
         }()
         var a: [MsgPackValue] = []
+        a.reserveCapacity(n)
         for _ in 0 ..< n {
             let key = try scan()
             let val = try scan()

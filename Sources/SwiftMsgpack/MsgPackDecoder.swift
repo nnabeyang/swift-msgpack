@@ -780,7 +780,9 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     static func asDictionary(value msgPackValue: MsgPackValue, using decoder: _MsgPackDecoder) -> [String: MsgPackValue] {
         var result = [String: MsgPackValue]()
-        for (keyvalue, value) in msgPackValue.asDictionary() {
+        let a = msgPackValue.asDictionary()
+        result.reserveCapacity(a.count)
+        for (keyvalue, value) in a {
             guard let key = try? decoder.unbox(keyvalue, as: String.self) else {
                 continue
             }
