@@ -5,7 +5,22 @@ private protocol _MsgPackDictionaryEncodableMarker {}
 extension Dictionary: _MsgPackDictionaryEncodableMarker where Key: Encodable, Value: Encodable {}
 
 open class MsgPackEncoder {
-    public init() {}
+    public struct OutputOption: OptionSet {
+        public let rawValue: UInt
+
+        public init(rawValue: UInt) {
+            self.rawValue = rawValue
+        }
+
+        public static let str8FormatSupport = OutputOption(rawValue: 1 << 0)
+    }
+
+    let options: OutputOption
+
+    public init(options: OutputOption = [.str8FormatSupport]) {
+        self.options = options
+    }
+
     open func encode<T: Encodable>(_ value: T) throws -> Data {
         let value: MsgPackEncodedValue = try encodeAsMsgPackValue(value)
         let writer = MsgPackValue.Writer()
@@ -14,7 +29,7 @@ open class MsgPackEncoder {
     }
 
     func encodeAsMsgPackValue<T: Encodable>(_ value: T) throws -> MsgPackEncodedValue {
-        let encoder = _MsgPackEncoder(codingPath: [])
+        let encoder = _MsgPackEncoder(codingPath: [], options: options)
         guard let result = try encoder.wrapEncodable(value, for: CodingKey?.none) else {
             throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: [], debugDescription: "Top-level \(T.self) did not encode any values."))
         }
@@ -66,9 +81,11 @@ public protocol MsgPackEncodable: Encodable {
 private class _MsgPackEncoder: Encoder {
     public var codingPath: [CodingKey] = []
     public var userInfo: [CodingUserInfoKey: Any] = [:]
+    fileprivate let options: MsgPackEncoder.OutputOption
 
-    init(codingPath: [CodingKey] = []) {
+    init(codingPath: [CodingKey] = [], options: MsgPackEncoder.OutputOption) {
         self.codingPath = codingPath
+        self.options = options
     }
 
     var singleValue: MsgPackEncodedValue?
@@ -285,6 +302,7 @@ private enum MsgPackFuture {
 private protocol _SpecialTreatmentEncoder {
     var codingPath: [CodingKey] { get }
     var encoder: _MsgPackEncoder { get }
+    var options: MsgPackEncoder.OutputOption { get }
 }
 
 extension FixedWidthInteger {
@@ -381,20 +399,7 @@ private extension _SpecialTreatmentEncoder {
     }
 
     func wrapString(_ value: String, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
-        let n = value.utf8.count
-        if n <= UInt.maxUint5 {
-            let bits = [UInt8(0xA0 + n)] + [UInt8](value.utf8)
-            return .literal(bits)
-        } else if n <= UInt8.max {
-            let bits = [0xD9, UInt8(n)] + [UInt8](value.utf8)
-            return .literal(bits)
-        } else if n <= UInt16.max {
-            let bits = [0xDA] + n.bigEndianBytes(as: UInt16.self) + [UInt8](value.utf8)
-            return .literal(bits)
-        } else if n <= UInt32.max {
-            let bits = [0xDB] + n.bigEndianBytes(as: UInt32.self) + [UInt8](value.utf8)
-            return .literal(bits)
-        }
+        if let value = wrapRaw([UInt8](value.utf8)) { return value }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
             path = codingPath + [additionalKey]
@@ -405,6 +410,25 @@ private extension _SpecialTreatmentEncoder {
             codingPath: path,
             debugDescription: "Unable to encode String.\(value) directly in MessagePack."
         ))
+    }
+
+    func wrapRaw(_ value: [UInt8]) -> MsgPackEncodedValue? {
+        let n = value.count
+        let bits: [UInt8]
+        if n <= UInt.maxUint5 {
+            bits = [UInt8(0xA0 + n)] + value
+        } else if n <= UInt16.max {
+            bits = if options.contains(.str8FormatSupport), n <= UInt8.max {
+                [0xD9, UInt8(n)] + value
+            } else {
+                [0xDA] + n.bigEndianBytes(as: UInt16.self) + value
+            }
+        } else if n <= UInt32.max {
+            bits = [0xDB] + n.bigEndianBytes(as: UInt32.self) + value
+        } else {
+            return nil
+        }
+        return .literal(bits)
     }
 
     func wrapEncodable<E: Encodable>(_ encodable: E, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue? {
@@ -431,16 +455,22 @@ private extension _SpecialTreatmentEncoder {
     }
 
     func wrapData(_ data: Data, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
-        let n = data.count
-        if n <= UInt8.max {
-            let bits = [0xC4, UInt8(n)] + [UInt8](data)
-            return .literal(bits)
-        } else if n <= UInt16.max {
-            let bits = [0xC5] + n.bigEndianBytes(as: UInt16.self) + [UInt8](data)
-            return .literal(bits)
-        } else if n <= UInt32.max {
-            let bits = [0xC6] + n.bigEndianBytes(as: UInt32.self) + [UInt8](data)
-            return .literal(bits)
+        if options.contains(.str8FormatSupport) {
+            let n = data.count
+            if n <= UInt8.max {
+                let bits = [0xC4, UInt8(n)] + [UInt8](data)
+                return .literal(bits)
+            } else if n <= UInt16.max {
+                let bits = [0xC5] + n.bigEndianBytes(as: UInt16.self) + [UInt8](data)
+                return .literal(bits)
+            } else if n <= UInt32.max {
+                let bits = [0xC6] + n.bigEndianBytes(as: UInt32.self) + [UInt8](data)
+                return .literal(bits)
+            }
+        } else {
+            if let value = wrapRaw([UInt8](data)) {
+                return value
+            }
         }
         let path: [CodingKey]
         if let additionalKey = additionalKey {
@@ -497,7 +527,7 @@ private extension _SpecialTreatmentEncoder {
     func getEncoder(for additionalKey: CodingKey?) -> _MsgPackEncoder {
         if let additionalKey = additionalKey {
             let newCodidngPath: [CodingKey] = codingPath + [additionalKey]
-            return _MsgPackEncoder(codingPath: newCodidngPath)
+            return _MsgPackEncoder(codingPath: newCodidngPath, options: options)
         }
         return encoder
     }
@@ -510,6 +540,10 @@ private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer
     init(encoder: _MsgPackEncoder, codingPath: [CodingKey]) {
         self.encoder = encoder
         self.codingPath = codingPath
+    }
+
+    var options: MsgPackEncoder.OutputOption {
+        encoder.options
     }
 
     public func encodeNil() throws {

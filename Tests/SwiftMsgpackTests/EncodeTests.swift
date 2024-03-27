@@ -31,6 +31,7 @@ final class EncodeTests: XCTestCase {
             try t(in: 3.14, type: Float.self, out: "ca4048f5c3")
             try t(in: 2.34, type: Double.self, out: "cb4002b851eb851eb8")
             try t(in: "Hello", type: String.self, out: "a548656c6c6f")
+            try t(in: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", type: String.self, out: "d9686162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a")
             try t(in: nil, type: [Int8]?.self, out: "c0")
             try t(in: [0x12, 0x34, 0x56], type: [UInt8].self, out: "93123456")
             try t(in: -0x20, type: Int8.self, out: "e0")
