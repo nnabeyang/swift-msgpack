@@ -405,10 +405,12 @@ extension _MsgPackDecoder {
     }
 
     func unwrapData() throws -> Data {
-        guard case let .literal(.bin(v)) = value else {
+        switch value {
+        case let .literal(.bin(v)), let .literal(.str(v)):
+            v
+        default:
             throw DecodingError.typeMismatch(Data.self, DecodingError.Context(codingPath: codingPath, debugDescription: ""))
         }
-        return v
     }
 
     func unwrapMsgPackDecodable(as type: MsgPackDecodable.Type) throws -> MsgPackDecodable {
