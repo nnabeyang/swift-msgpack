@@ -12,7 +12,7 @@ open class MsgPackDecoder {
     public init() {}
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         let scanner: MsgPackScanner = .init(data: data)
-        let value = try scanner.scan()
+        let value = scanner.scan()
         let decoder: _MsgPackDecoder = .init(from: value)
         do {
             return try decoder.unwrap(as: T.self)
@@ -128,22 +128,8 @@ private extension _MsgPackDecoder {
     func unboxInt(_ value: MsgPackValue) throws -> Int {
         if case let .literal(vv) = value {
             switch vv {
-            case let .uint8(data):
-                return Int(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return Int(bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return Int(bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return Int(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
-            case let .int8(data):
-                return Int(bigEndianFixedWidthInt(data, as: Int8.self))
-            case let .int16(data):
-                return Int(bigEndianFixedWidthInt(data, as: Int16.self))
-            case let .int32(data):
-                return Int(bigEndianFixedWidthInt(data, as: Int32.self))
-            case let .int64(data):
-                return Int(bigEndianFixedWidthInt(data, as: Int64.self))
+            case let .uint(v), let .int(v):
+                return Int(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -158,22 +144,8 @@ private extension _MsgPackDecoder {
     func unboxInt8(_ value: MsgPackValue) throws -> Int8 {
         if case let .literal(vv) = value {
             switch vv {
-            case let .uint8(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
-            case let .int8(data):
-                return bigEndianFixedWidthInt(data, as: Int8.self)
-            case let .int16(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: Int16.self))
-            case let .int32(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: Int32.self))
-            case let .int64(data):
-                return Int8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: Int64.self))
+            case let .uint(v), let .int(v):
+                return Int8(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -188,22 +160,8 @@ private extension _MsgPackDecoder {
     func unboxInt16(_ value: MsgPackValue) throws -> Int16 {
         if case let .literal(vv) = value {
             switch vv {
-            case let .uint8(data):
-                return Int16(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return Int16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return Int16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return Int16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
-            case let .int8(data):
-                return Int16(bigEndianFixedWidthInt(data, as: Int8.self))
-            case let .int16(data):
-                return bigEndianFixedWidthInt(data, as: Int16.self)
-            case let .int32(data):
-                return Int16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: Int32.self))
-            case let .int64(data):
-                return Int16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: Int64.self))
+            case let .uint(v), let .int(v):
+                return Int16(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -218,22 +176,8 @@ private extension _MsgPackDecoder {
     func unboxInt32(_ value: MsgPackValue) throws -> Int32 {
         if case let .literal(vv) = value {
             switch vv {
-            case let .uint8(data):
-                return Int32(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return Int32(bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return Int32(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return Int32(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
-            case let .int8(data):
-                return Int32(bigEndianFixedWidthInt(data, as: Int8.self))
-            case let .int16(data):
-                return Int32(bigEndianFixedWidthInt(data, as: Int16.self))
-            case let .int32(data):
-                return bigEndianFixedWidthInt(data, as: Int32.self)
-            case let .int64(data):
-                return Int32(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: Int64.self))
+            case let .uint(v), let .int(v):
+                return Int32(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -248,22 +192,8 @@ private extension _MsgPackDecoder {
     func unboxInt64(_ value: MsgPackValue) throws -> Int64 {
         if case let .literal(vv) = value {
             switch vv {
-            case let .uint8(data):
-                return Int64(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return Int64(bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return Int64(bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return Int64(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
-            case let .int8(data):
-                return Int64(bigEndianFixedWidthInt(data, as: Int8.self))
-            case let .int16(data):
-                return Int64(bigEndianFixedWidthInt(data, as: Int16.self))
-            case let .int32(data):
-                return Int64(bigEndianFixedWidthInt(data, as: Int32.self))
-            case let .int64(data):
-                return bigEndianFixedWidthInt(data, as: Int64.self)
+            case let .uint(v), let .int(v):
+                return Int64(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -278,14 +208,8 @@ private extension _MsgPackDecoder {
     func unboxUInt(_ value: MsgPackValue) throws -> UInt {
         if case let .literal(literal) = value {
             switch literal {
-            case let .uint8(data):
-                return UInt(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return UInt(bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return UInt(bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return UInt(bigEndianFixedWidthInt(data, as: UInt64.self))
+            case let .uint(v):
+                return UInt(v)
             default:
                 break
             }
@@ -300,14 +224,8 @@ private extension _MsgPackDecoder {
     func unboxUInt8(_ value: MsgPackValue) throws -> UInt8 {
         if case let .literal(literal) = value {
             switch literal {
-            case let .uint8(data):
-                return bigEndianFixedWidthInt(data, as: UInt8.self)
-            case let .uint16(data):
-                return UInt8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return UInt8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return UInt8(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
+            case let .uint(v):
+                return UInt8(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -322,14 +240,8 @@ private extension _MsgPackDecoder {
     func unboxUInt16(_ value: MsgPackValue) throws -> UInt16 {
         if case let .literal(literal) = value {
             switch literal {
-            case let .uint8(data):
-                return UInt16(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return bigEndianFixedWidthInt(data, as: UInt16.self)
-            case let .uint32(data):
-                return UInt16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return UInt16(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
+            case let .uint(v):
+                return UInt16(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -344,14 +256,8 @@ private extension _MsgPackDecoder {
     func unboxUInt32(_ value: MsgPackValue) throws -> UInt32 {
         if case let .literal(literal) = value {
             switch literal {
-            case let .uint8(data):
-                return UInt32(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return UInt32(bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return bigEndianFixedWidthInt(data, as: UInt32.self)
-            case let .uint64(data):
-                return UInt32(truncatingIfNeeded: bigEndianFixedWidthInt(data, as: UInt64.self))
+            case let .uint(v):
+                return UInt32(truncatingIfNeeded: v)
             default:
                 break
             }
@@ -366,14 +272,8 @@ private extension _MsgPackDecoder {
     func unboxUInt64(_ value: MsgPackValue) throws -> UInt64 {
         if case let .literal(literal) = value {
             switch literal {
-            case let .uint8(data):
-                return UInt64(bigEndianFixedWidthInt(data, as: UInt8.self))
-            case let .uint16(data):
-                return UInt64(bigEndianFixedWidthInt(data, as: UInt16.self))
-            case let .uint32(data):
-                return UInt64(bigEndianFixedWidthInt(data, as: UInt32.self))
-            case let .uint64(data):
-                return bigEndianFixedWidthInt(data, as: UInt64.self)
+            case let .uint(v):
+                return UInt64(v)
             default:
                 break
             }
