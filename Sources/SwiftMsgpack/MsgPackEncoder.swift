@@ -650,7 +650,7 @@ private struct MsgPackUnkeyedEncodingContainer: UnkeyedEncodingContainer {
     }
 
     func encode(_ value: String) throws {
-        array.append(try encoder.wrapString(value, for: nil))
+        try array.append(encoder.wrapString(value, for: nil))
     }
 
     func encode(_ value: Double) throws {
@@ -708,15 +708,15 @@ private struct MsgPackUnkeyedEncodingContainer: UnkeyedEncodingContainer {
     }
 
     private func encodeUInt<T: UnsignedInteger & FixedWidthInteger>(_ value: T) throws {
-        array.append(try encoder.wrapUInt(value, for: nil))
+        try array.append(encoder.wrapUInt(value, for: nil))
     }
 
     private func encodeInt<T: SignedInteger & FixedWidthInteger>(_ value: T) throws {
-        array.append(try encoder.wrapInt(value, for: nil))
+        try array.append(encoder.wrapInt(value, for: nil))
     }
 
     private func encodeFloat<T: FloatingPoint & DataNumber>(_ value: T) throws {
-        array.append(try encoder.wrapFloat(value, for: nil))
+        try array.append(encoder.wrapFloat(value, for: nil))
     }
 
     func nestedContainer<NestedKey>(keyedBy _: NestedKey.Type) -> KeyedEncodingContainer<NestedKey> where NestedKey: CodingKey {
@@ -760,17 +760,17 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
     }
 
     func encodeNil(forKey key: Key) throws {
-        map.set(.Nil, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(.Nil, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func encode(_ value: Bool, forKey key: Key) throws {
         let value = encoder.wrapBool(value)
-        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(value, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func encode(_ value: String, forKey key: Key) throws {
         let value = try encoder.wrapString(value, for: key)
-        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(value, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func encode(_ value: Double, forKey key: Key) throws {
@@ -823,7 +823,7 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
 
     func encode<T>(_ value: T, forKey key: Key) throws where T: Encodable {
         let encoded = try encoder.wrapEncodable(value, for: key)
-        map.set(encoded ?? .Nil, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(encoded ?? .Nil, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     func nestedContainer<NestedKey>(keyedBy _: NestedKey.Type, forKey key: Key) -> KeyedEncodingContainer<NestedKey> where NestedKey: CodingKey {
@@ -854,21 +854,21 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
 
     private func encodeFloat<T: FloatingPoint & DataNumber>(_ value: T, for key: Key) throws {
         let value = try encoder.wrapFloat(value, for: nil)
-        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(value, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     private func encodeInt<T: SignedInteger & FixedWidthInteger>(_ value: T, for key: Key) throws {
         let value = try encoder.wrapInt(value, for: key)
-        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(value, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 
     private func encodeUInt<T: UnsignedInteger & FixedWidthInteger>(_ value: T, forKey key: Key) throws {
         let value = try encoder.wrapUInt(value, for: key)
-        map.set(value, for: try encoder.wrapStringKey(key.stringValue, for: key))
+        try map.set(value, for: encoder.wrapStringKey(key.stringValue, for: key))
     }
 }
 
-internal struct MsgPackKey: CodingKey {
+struct MsgPackKey: CodingKey {
     public var stringValue: String
     public var intValue: Int?
 
@@ -890,7 +890,7 @@ internal struct MsgPackKey: CodingKey {
     static let `super`: MsgPackKey = .init(stringValue: "super")
 }
 
-internal func bigEndianFixedWidthInt<T: FixedWidthInteger>(_ data: Data, as _: T.Type) -> T {
+func bigEndianFixedWidthInt<T: FixedWidthInteger>(_ data: Data, as _: T.Type) -> T {
     T(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: T.self).pointee ?? 0 })
 }
 

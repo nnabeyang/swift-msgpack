@@ -2,7 +2,7 @@ import Foundation
 
 @inline(never)
 @usableFromInline
-internal func _abstract(
+func _abstract(
     file: StaticString = #file,
     line: UInt = #line
 ) -> Never {
@@ -10,7 +10,7 @@ internal func _abstract(
 }
 
 public struct AnyCodable {
-    internal enum BoxType {
+    enum BoxType {
         case encodable(_AnyBaseBox)
         case equatable(_AnyEquatableBox)
         case hashable(_AnyHashableBox)
@@ -152,7 +152,7 @@ extension AnyCodable: CustomDebugStringConvertible {
     }
 }
 
-internal struct _ConcreateCodableBox<Base> {
+struct _ConcreateCodableBox<Base> {
     let _baseCodableKey: Base
     init(_ base: Base) {
         _baseCodableKey = base
@@ -163,7 +163,7 @@ internal struct _ConcreateCodableBox<Base> {
     }
 }
 
-internal protocol _AnyBaseBox {
+protocol _AnyBaseBox {
     func _encode(to encoder: Encoder) throws
     var _base: Any { get }
 }
@@ -175,7 +175,7 @@ extension _ConcreateCodableBox: _AnyBaseBox where Base: Encodable {
     }
 }
 
-internal protocol _AnyEquatableBox: _AnyBaseBox {
+protocol _AnyEquatableBox: _AnyBaseBox {
     func _isEqual(to box: _AnyEquatableBox) -> Bool?
     func _unbox<T: Encodable & Equatable>() -> T?
 }
@@ -193,7 +193,7 @@ extension _ConcreateCodableBox: _AnyEquatableBox where Base: Encodable & Equatab
     }
 }
 
-internal protocol _AnyHashableBox: _AnyEquatableBox {
+protocol _AnyHashableBox: _AnyEquatableBox {
     func _hash(into hasher: inout Hasher)
 }
 

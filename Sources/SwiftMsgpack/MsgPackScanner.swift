@@ -438,7 +438,7 @@ class MsgPackScanner {
         var a: [MsgPackValue] = []
         a.reserveCapacity(n)
         for _ in 0 ..< n {
-            a.append(try scan())
+            try a.append(scan())
         }
         return .array(a)
     }

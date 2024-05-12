@@ -30,7 +30,7 @@ public protocol MsgPackDecodable: Decodable {
     init(msgPack data: Data) throws
 }
 
-public typealias MsgPackCodable = MsgPackEncodable & MsgPackDecodable
+public typealias MsgPackCodable = MsgPackDecodable & MsgPackEncodable
 
 private class _MsgPackDecoder: Decoder {
     var codingPath: [CodingKey]
@@ -547,7 +547,7 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     var isAtEnd: Bool {
-        self.currentIndex >= self.count!
+        currentIndex >= count!
     }
 
     mutating func decodeNil() throws -> Bool {
@@ -1057,7 +1057,7 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 }
 
-internal protocol DataNumber {
+protocol DataNumber {
     init(data: Data) throws
     var bytes: [UInt8] { get }
 }
