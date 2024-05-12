@@ -4,134 +4,133 @@ import XCTest
 final class DecodeTests: XCTestCase {
     let decoder: MsgPackDecoder = .init()
     let encoder: MsgPackEncoder = .init()
-    private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil) throws {
+    private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil,
+                                             file: StaticString = #file, line: UInt = #line)
+    {
         do {
             let actual = try decoder.decode(typ, from: Data(hex: input))
             if errorType != nil {
-                XCTFail()
+                XCTFail("errorType is should be nil", file: file, line: line)
                 return
             }
-            XCTAssertEqual(actual, out)
+            XCTAssertEqual(actual, out, file: file, line: line)
         } catch {
             guard let errorType = errorType else {
-                throw error
+                XCTFail("unexpected error: \(error)", file: file, line: line)
+                return
             }
-            XCTAssertTrue(type(of: error) == errorType)
+            XCTAssertTrue(type(of: error) == errorType, "expected: \(errorType), got: \(type(of: error))", file: file, line: line)
         }
     }
 
-    private func t2(in input: [AnyCodable: AnyCodable]) throws {
+    private func t2(in input: [AnyCodable: AnyCodable], file: StaticString = #file, line: UInt = #line) throws {
         let data = try encoder.encode(input)
         let out = try decoder.decode([AnyCodable: AnyCodable].self, from: data)
-        XCTAssertEqual(out, input)
+        XCTAssertEqual(out, input, file: file, line: line)
     }
 
-    func testDecode() throws {
-        do {
-            try t(in: "01", type: UInt8.self, out: 0x01)
-            try t(in: "59", type: UInt16.self, out: 0x59)
-            try t(in: "7f", type: UInt32.self, out: 0x7F)
-            try t(in: "7f", type: UInt64.self, out: 0x7F)
-            try t(in: "7f", type: UInt.self, out: 0x7F)
-            try t(in: "01", type: Int8.self, out: 0x01)
-            try t(in: "59", type: Int16.self, out: 0x59)
-            try t(in: "7f", type: Int32.self, out: 0x7F)
-            try t(in: "7f", type: Int64.self, out: 0x7F)
-            try t(in: "7f", type: Int.self, out: 0x7F)
-            try t(in: "82a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
-            try t(in: "82a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
-            try t(in: "81ab656d7074795f617272617990", type: [String: [String]].self, out: ["empty_array": []])
-            try t(in: "93123456", type: [UInt8].self, out: [0x12, 0x34, 0x56])
-            try t(in: "921234", type: PairArray.self, out: PairArray(X: 0x12, Y: 0x34))
-            try t(in: "93a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
-            try t(in: "c0", type: [String]?.self, out: nil)
-            try t(in: "c0", type: Int?.self, out: nil)
-            try t(in: "c2", type: Bool.self, out: false)
-            try t(in: "c3", type: Bool.self, out: true)
-            try t(in: "c403123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
-            try t(in: "c4826162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: Data.self, out: Data("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz".utf8))
-            try t(in: "c50003123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
-            try t(in: "c600000003123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
-            try t(in: "ca4015c28f", type: Float.self, out: 2.34)
-            try t(in: "ca4015c28f", type: Double.self, out: 2.3399999141693115)
-            try t(in: "cb4002b851eb851eb8", type: Double.self, out: 2.34)
-            try t(in: "cb4002b851eb851eb8", type: Float.self, out: 2.34)
-            try t(in: "cb7fefffffffffffff", type: Double.self, out: 1.7976931348623157e+308)
-            try t(in: "cb7fefffffffffffff", type: Float.self, out: Float.infinity)
-            try t(in: "cc80", type: UInt8.self, out: 0x80)
-            try t(in: "cd4b6b", type: UInt16.self, out: 0x4B6B)
-            try t(in: "ce004b6b34", type: UInt32.self, out: 0x4B6B34)
-            try t(in: "cf0000004b6b34abcc", type: UInt64.self, out: 0x4B_6B34_ABCC)
-            try t(in: "cf0000004b6b34abcc", type: UInt.self, out: 0x4B_6B34_ABCC)
-            try t(in: "d081", type: Int8.self, out: -0x7F)
-            try t(in: "d1b495", type: Int16.self, out: -0x4B6B)
-            try t(in: "d2ffb494cc", type: Int32.self, out: -0x4B6B34)
-            try t(in: "d3ffffffb494cb5434", type: Int64.self, out: -0x4B_6B34_ABCC)
-            try t(in: "d3ffffffb494cb5434", type: Int.self, out: -0x4B_6B34_ABCC)
-            try t(in: "d9826162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: String.self, out: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz")
-            try t(in: "d9826162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: Data.self, out: Data("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz".utf8))
-            try t(in: "da00686162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: String.self, out: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz")
-            try t(in: "da00686162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: Data.self, out: Data("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz".utf8))
-            try t(in: "da000548656c6c6f", type: Data.self, out: Data("Hello".utf8))
-            try t(in: "da000548656c6c6f", type: String.self, out: "Hello")
-            try t(in: "db0000000548656c6c6f", type: String.self, out: "Hello")
-            try t(in: "db0000000548656c6c6f", type: Data.self, out: Data("Hello".utf8))
-            try t(in: "a548656c6c6f", type: String.self, out: "Hello")
-            try t(in: "a548656c6c6f", type: Data.self, out: Data("Hello".utf8))
-            try t(in: "dc00021234", type: PairArray.self, out: PairArray(X: 0x12, Y: 0x34))
-            try t(in: "dc0003a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
-            try t(in: "dd00000003a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
-            try t(in: "de0002a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
-            try t(in: "de0002a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
-            try t(in: "df00000002a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
-            try t(in: "df00000002a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
-            try t(in: "e0", type: Int8.self, out: -0x20)
-            try t(in: "e0", type: Int16.self, out: -0x20)
-            try t(in: "e0", type: Int32.self, out: -0x20)
-            try t(in: "e0", type: Int64.self, out: -0x20)
-            try t(in: "e0", type: Int.self, out: -0x20)
-            try t(in: "cc80", type: Int32.self, out: Int32(Int8.max) + 1)
-            try t(in: "ce80000000", type: Int64.self, out: Int64(Int32.max) + 1)
-            // UnkeyedDecodingContainer
-            try t(in: "dc0003a3616263a378797aa3646464", type: SS.self, out: SS(a: ["abc", "xyz", "ddd"]))
-            try t(in: "921234", type: UIS.self, out: UIS(a: [0x12, 0x34]))
-            try t(in: "92e0e1", type: IS.self, out: IS(a: [-0x20, -0x1F]))
-            try t(in: "92ca4015c28fca4048f5c3", type: FS.self, out: FS(a: [2.34, 3.14]))
-            try t(in: "92c2c3", type: BS.self, out: BS(a: [false, true]))
-            try t(in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
-                  type: [Small].self,
-                  out: [.init(tag: "tag1"), .init(tag: "tag2"), .init(tag: "tag3"), .init(tag: "tag4")])
-            try t(in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
-                  type: [Small: Small].self,
-                  out: [.init(tag: "tag1"): .init(tag: "tag2"), .init(tag: "tag3"): .init(tag: "tag4")])
-            try t(in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
-                  type: AnyCodable.self,
-                  out: AnyCodable([
-                      AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]),
-                      AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
-                      AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]),
-                      AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
-                  ]))
-            try t(in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
-                  type: AnyCodable.self,
-                  out: AnyCodable([
-                      AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
-                      AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
-                  ]))
-            // nestedUnKeyedContainer
-            try t(in: "92921234925678", type: UIS2.self, out: UIS2(a: [[0x12, 0x34], [0x56, 0x78]]))
-            // nestedContainer
-            try t(in: "9282a15812a1593482a15812a15934", type: Pairs.self, out: Pairs(a: [.init(X: 0x12, Y: 0x34), .init(X: 0x12, Y: 0x34)]))
-            // typeMismatch
-            try t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
-            try t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
-            try t(in: "c3", type: Double.self, out: 1.0, errorType: DecodingError.self)
-            try t(in: "c3", type: String.self, out: "", errorType: DecodingError.self)
-            try t(in: "c3", type: Data.self, out: .init(), errorType: DecodingError.self)
-            try t(in: "7f", type: Bool.self, out: true, errorType: DecodingError.self)
-        } catch {
-            XCTFail(error.localizedDescription)
-        }
+    func testDecode() {
+        t(in: "01", type: UInt8.self, out: 0x01)
+        t(in: "59", type: UInt16.self, out: 0x59)
+        t(in: "7f", type: UInt32.self, out: 0x7F)
+        t(in: "7f", type: UInt64.self, out: 0x7F)
+        t(in: "7f", type: UInt.self, out: 0x7F)
+        t(in: "01", type: Int8.self, out: 0x01)
+        t(in: "59", type: Int16.self, out: 0x59)
+        t(in: "7f", type: Int32.self, out: 0x7F)
+        t(in: "7f", type: Int64.self, out: 0x7F)
+        t(in: "7f", type: Int.self, out: 0x7F)
+        t(in: "82a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
+        t(in: "82a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
+        t(in: "81ab656d7074795f617272617990", type: [String: [String]].self, out: ["empty_array": []])
+        t(in: "93123456", type: [UInt8].self, out: [0x12, 0x34, 0x56])
+        t(in: "921234", type: PairArray.self, out: PairArray(X: 0x12, Y: 0x34))
+        t(in: "93a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
+        t(in: "c0", type: [String]?.self, out: nil)
+        t(in: "c0", type: Int?.self, out: nil)
+        t(in: "c2", type: Bool.self, out: false)
+        t(in: "c3", type: Bool.self, out: true)
+        t(in: "c403123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
+        t(in: "c4826162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: Data.self, out: Data("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz".utf8))
+        t(in: "c50003123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
+        t(in: "c600000003123456", type: Data.self, out: Data([0x12, 0x34, 0x56]))
+        t(in: "ca4015c28f", type: Float.self, out: 2.34)
+        t(in: "ca4015c28f", type: Double.self, out: 2.3399999141693115)
+        t(in: "cb4002b851eb851eb8", type: Double.self, out: 2.34)
+        t(in: "cb4002b851eb851eb8", type: Float.self, out: 2.34)
+        t(in: "cb7fefffffffffffff", type: Double.self, out: 1.7976931348623157e+308)
+        t(in: "cb7fefffffffffffff", type: Float.self, out: Float.infinity)
+        t(in: "cc80", type: UInt8.self, out: 0x80)
+        t(in: "cd4b6b", type: UInt16.self, out: 0x4B6B)
+        t(in: "ce004b6b34", type: UInt32.self, out: 0x4B6B34)
+        t(in: "cf0000004b6b34abcc", type: UInt64.self, out: 0x4B_6B34_ABCC)
+        t(in: "cf0000004b6b34abcc", type: UInt.self, out: 0x4B_6B34_ABCC)
+        t(in: "d081", type: Int8.self, out: -0x7F)
+        t(in: "d1b495", type: Int16.self, out: -0x4B6B)
+        t(in: "d2ffb494cc", type: Int32.self, out: -0x4B6B34)
+        t(in: "d3ffffffb494cb5434", type: Int64.self, out: -0x4B_6B34_ABCC)
+        t(in: "d3ffffffb494cb5434", type: Int.self, out: -0x4B_6B34_ABCC)
+        t(in: "d9826162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: String.self, out: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz")
+        t(in: "d9826162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: Data.self, out: Data("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz".utf8))
+        t(in: "da00686162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: String.self, out: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz")
+        t(in: "da00686162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a6162636465666768696a6b6c6d6e6f707172737475767778797a", type: Data.self, out: Data("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz".utf8))
+        t(in: "da000548656c6c6f", type: Data.self, out: Data("Hello".utf8))
+        t(in: "da000548656c6c6f", type: String.self, out: "Hello")
+        t(in: "db0000000548656c6c6f", type: String.self, out: "Hello")
+        t(in: "db0000000548656c6c6f", type: Data.self, out: Data("Hello".utf8))
+        t(in: "a548656c6c6f", type: String.self, out: "Hello")
+        t(in: "a548656c6c6f", type: Data.self, out: Data("Hello".utf8))
+        t(in: "dc00021234", type: PairArray.self, out: PairArray(X: 0x12, Y: 0x34))
+        t(in: "dc0003a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
+        t(in: "dd00000003a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
+        t(in: "de0002a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
+        t(in: "de0002a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
+        t(in: "df00000002a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
+        t(in: "df00000002a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
+        t(in: "e0", type: Int8.self, out: -0x20)
+        t(in: "e0", type: Int16.self, out: -0x20)
+        t(in: "e0", type: Int32.self, out: -0x20)
+        t(in: "e0", type: Int64.self, out: -0x20)
+        t(in: "e0", type: Int.self, out: -0x20)
+        t(in: "cc80", type: Int32.self, out: Int32(Int8.max) + 1)
+        t(in: "ce80000000", type: Int64.self, out: Int64(Int32.max) + 1)
+        // UnkeyedDecodingContainer
+        t(in: "dc0003a3616263a378797aa3646464", type: SS.self, out: SS(a: ["abc", "xyz", "ddd"]))
+        t(in: "921234", type: UIS.self, out: UIS(a: [0x12, 0x34]))
+        t(in: "92e0e1", type: IS.self, out: IS(a: [-0x20, -0x1F]))
+        t(in: "92ca4015c28fca4048f5c3", type: FS.self, out: FS(a: [2.34, 3.14]))
+        t(in: "92c2c3", type: BS.self, out: BS(a: [false, true]))
+        t(in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
+          type: [Small].self,
+          out: [.init(tag: "tag1"), .init(tag: "tag2"), .init(tag: "tag3"), .init(tag: "tag4")])
+        t(in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
+          type: [Small: Small].self,
+          out: [.init(tag: "tag1"): .init(tag: "tag2"), .init(tag: "tag3"): .init(tag: "tag4")])
+        t(in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
+          type: AnyCodable.self,
+          out: AnyCodable([
+              AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]),
+              AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
+              AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]),
+              AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
+          ]))
+        t(in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
+          type: AnyCodable.self,
+          out: AnyCodable([
+              AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
+              AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
+          ]))
+        // nestedUnKeyedContainer
+        t(in: "92921234925678", type: UIS2.self, out: UIS2(a: [[0x12, 0x34], [0x56, 0x78]]))
+        // nestedContainer
+        t(in: "9282a15812a1593482a15812a15934", type: Pairs.self, out: Pairs(a: [.init(X: 0x12, Y: 0x34), .init(X: 0x12, Y: 0x34)]))
+        // typeMismatch
+        t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
+        t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
+        t(in: "c3", type: Double.self, out: 1.0, errorType: DecodingError.self)
+        t(in: "c3", type: String.self, out: "", errorType: DecodingError.self)
+        t(in: "c3", type: Data.self, out: .init(), errorType: DecodingError.self)
+        t(in: "7f", type: Bool.self, out: true, errorType: DecodingError.self)
     }
 
     func testEncode() throws {
