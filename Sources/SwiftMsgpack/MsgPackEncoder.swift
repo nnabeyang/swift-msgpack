@@ -5,7 +5,7 @@ private protocol _MsgPackDictionaryEncodableMarker {}
 extension Dictionary: _MsgPackDictionaryEncodableMarker where Key: Encodable, Value: Encodable {}
 
 open class MsgPackEncoder {
-    public struct OutputOption: OptionSet {
+    public struct OutputOption: OptionSet, Sendable {
         public let rawValue: UInt
 
         public init(rawValue: UInt) {
