@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "SwiftMessagePack"
-  s.version      = "0.5.0"
+  s.version      = "0.6.0"
   s.summary      = "swift-msgpack is a library of MessagePack encoder & decoder for Swift based on Codable."
   s.homepage              = "https://github.com/nnabeyang/swift-msgpack"
   s.license               = { :type => "MIT", :file => "LICENSE" }
@@ -11,5 +11,5 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/nnabeyang/swift-msgpack.git", :tag => "#{s.version}" }
   s.source_files  = "Sources/**/*.swift"
   s.requires_arc = true
-  s.swift_version = '5.6'
+  s.swift_version = '6.0'
 end
