@@ -5,7 +5,7 @@ final class DecodeTests: XCTestCase {
     let decoder: MsgPackDecoder = .init()
     let encoder: MsgPackEncoder = .init()
     private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil,
-                                             file: StaticString = #file, line: UInt = #line)
+                                             file: StaticString = #filePath, line: UInt = #line)
     {
         do {
             let actual = try decoder.decode(typ, from: Data(hex: input))
@@ -23,7 +23,7 @@ final class DecodeTests: XCTestCase {
         }
     }
 
-    private func t2(in input: [AnyCodable: AnyCodable], file: StaticString = #file, line: UInt = #line) throws {
+    private func t2(in input: [AnyCodable: AnyCodable], file: StaticString = #filePath, line: UInt = #line) throws {
         let data = try encoder.encode(input)
         let out = try decoder.decode([AnyCodable: AnyCodable].self, from: data)
         XCTAssertEqual(out, input, file: file, line: line)

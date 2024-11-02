@@ -4,7 +4,7 @@ import XCTest
 final class EncodeStr8UnsupportTests: XCTestCase {
     private let encoder = MsgPackEncoder(options: [])
 
-    private func t<X: Encodable>(in input: X, type _: X.Type, out: String, file: StaticString = #file, line: UInt = #line) {
+    private func t<X: Encodable>(in input: X, type _: X.Type, out: String, file: StaticString = #filePath, line: UInt = #line) {
         do {
             let actual = try encoder.encode(input)
             XCTAssertEqual(actual.hexDescription, out, file: file, line: line)
