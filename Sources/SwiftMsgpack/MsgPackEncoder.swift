@@ -890,10 +890,6 @@ struct MsgPackKey: CodingKey {
     static let `super`: MsgPackKey = .init(stringValue: "super")
 }
 
-func bigEndianFixedWidthInt<T: FixedWidthInteger>(_ data: Data, as _: T.Type) -> T {
-    T(bigEndian: data.withUnsafeBytes { $0.baseAddress?.assumingMemoryBound(to: T.self).pointee ?? 0 })
-}
-
 private extension Int {
     static let fixMax = 0x7F
     static let fixMin = -0x20

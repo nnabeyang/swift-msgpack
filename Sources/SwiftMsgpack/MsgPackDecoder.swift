@@ -962,15 +962,10 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 }
 
 protocol DataNumber {
-    init(data: Data) throws
     var bytes: [UInt8] { get }
 }
 
 extension Float: DataNumber {
-    init(data: Data) throws {
-        self = .init(bitPattern: .init(bigEndianFixedWidthInt(data, as: UInt32.self)))
-    }
-
     var bytes: [UInt8] {
         withUnsafeBytes(of: bitPattern.bigEndian) {
             Array($0)
@@ -979,16 +974,6 @@ extension Float: DataNumber {
 }
 
 extension Double: DataNumber {
-    init(data: Data) throws {
-        self = .init(bitPattern: .init(bigEndianFixedWidthInt(data, as: UInt64.self)))
-    }
-
-    var data: Data {
-        withUnsafePointer(to: bitPattern.bigEndian) {
-            Data(buffer: UnsafeBufferPointer(start: $0, count: 1))
-        }
-    }
-
     var bytes: [UInt8] {
         withUnsafeBytes(of: bitPattern.bigEndian) {
             Array($0)
