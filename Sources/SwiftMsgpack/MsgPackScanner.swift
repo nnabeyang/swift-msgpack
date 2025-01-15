@@ -5,9 +5,9 @@ enum MsgPackValueLiteralType {
     case bool(Bool)
     case int(any FixedWidthInteger)
     case uint(any FixedWidthInteger)
-    case float32(Data)
-    case float64(Data)
-    case str(Data)
+    case float32(Float)
+    case float64(Double)
+    case str(UnsafeBufferPointer<UInt8>)
     case bin(Data)
 }
 
@@ -211,18 +211,52 @@ enum MsgPackOpCode {
 }
 
 class MsgPackScanner {
-    private let data: Data
-    private var off = 0
-    init(data: Data) {
-        self.data = data
-        off = 0
+    private let start: UnsafeRawPointer
+    private var ptr: UnsafeRawPointer
+    private let count: Int
+
+    init(ptr: UnsafeRawPointer, count: Int) {
+        start = ptr
+        self.ptr = ptr
+        self.count = count
     }
 
-    private func read(_ n: Int) -> Data {
+    private func advanced(by n: Int) {
+        ptr = ptr.advanced(by: n)
+    }
+
+    private var isAtEnd: Bool {
+        start.distance(to: ptr) >= count
+    }
+
+    private func readUInt8() -> UInt8 {
         defer {
-            off += n
+            advanced(by: 1)
         }
-        return data[off ..< (off + n)]
+        return ptr.load(as: UInt8.self)
+    }
+
+    private func readInt8() -> Int8 {
+        defer {
+            advanced(by: 1)
+        }
+        return ptr.load(as: Int8.self)
+    }
+
+    private func readUnaligned<T>(as: T.Type) -> T {
+        defer {
+            advanced(by: MemoryLayout<T>.size)
+        }
+        return ptr.loadUnaligned(as: T.self)
+    }
+
+    private func readBuffer(_ n: Int) -> UnsafeBufferPointer<UInt8> {
+        defer {
+            advanced(by: n)
+        }
+        return ptr.withMemoryRebound(to: UInt8.self, capacity: n) {
+            UnsafeBufferPointer<UInt8>(start: $0, count: n)
+        }
     }
 
     func scan() -> MsgPackValue {
@@ -255,13 +289,13 @@ class MsgPackScanner {
     private func _scanUInt(_ c: UInt8) -> any FixedWidthInteger {
         switch c {
         case 0x80:
-            bigEndianFixedWidthInt(read(1 << 0), as: UInt8.self)
+            readUInt8()
         case 0x81:
-            bigEndianFixedWidthInt(read(1 << 1), as: UInt16.self)
+            readUnaligned(as: UInt16.self).bigEndian
         case 0x82:
-            bigEndianFixedWidthInt(read(1 << 2), as: UInt32.self)
+            readUnaligned(as: UInt32.self).bigEndian
         case 0x83:
-            bigEndianFixedWidthInt(read(1 << 3), as: UInt64.self)
+            readUnaligned(as: UInt64.self).bigEndian
         default:
             c
         }
@@ -275,31 +309,30 @@ class MsgPackScanner {
     private func scanInt(_ c: UInt8) -> MsgPackValue {
         switch c {
         case 0x80:
-            .literal(.int(bigEndianFixedWidthInt(read(1 << 0), as: Int8.self)))
+            .literal(.int(readInt8()))
         case 0x81:
-            .literal(.int(bigEndianFixedWidthInt(read(1 << 1), as: Int16.self)))
+            .literal(.int(readUnaligned(as: Int16.self).bigEndian))
         case 0x82:
-            .literal(.int(bigEndianFixedWidthInt(read(1 << 2), as: Int32.self)))
+            .literal(.int(readUnaligned(as: Int32.self).bigEndian))
         case 0x83:
-            .literal(.int(bigEndianFixedWidthInt(read(1 << 3), as: Int64.self)))
+            .literal(.int(readUnaligned(as: Int64.self).bigEndian))
         default:
-            .literal(.int(bigEndianFixedWidthInt(.init([c]), as: Int8.self)))
+            .literal(.int(Int8(bitPattern: c)))
         }
     }
 
     private func scanString(_ c: UInt8) -> MsgPackValue {
-        .literal(.str(read(getLength(c))))
+        .literal(.str(readBuffer(getLength(c))))
     }
 
     private func scanBinary(_ c: UInt8) -> MsgPackValue {
-        .literal(.bin(read(getLength(c))))
+        .literal(.bin(.init(buffer: readBuffer(getLength(c)))))
     }
 
     private func scanExtension(_ c: UInt8) -> MsgPackValue {
         let n = getLength(c)
-        let typeNo = Int8(truncatingIfNeeded: data[off])
-        off += 1
-        return .ext(typeNo, read(n))
+        let typeNo = Int8(bitPattern: readUInt8())
+        return .ext(typeNo, .init(buffer: readBuffer(n)))
     }
 
     private func scanSimple(_ c: UInt8) -> MsgPackValue {
@@ -311,9 +344,9 @@ class MsgPackScanner {
         case 0xC3:
             .literal(.bool(true))
         case 0xCA:
-            .literal(.float32(read(1 << 2)))
+            .literal(.float32(.init(bitPattern: readUnaligned(as: UInt32.self).bigEndian)))
         case 0xCB:
-            .literal(.float64(read(1 << 3)))
+            .literal(.float64(.init(bitPattern: readUnaligned(as: UInt64.self).bigEndian)))
         default:
             .none
         }
@@ -323,8 +356,10 @@ class MsgPackScanner {
         let n = getLength(c)
         var a: [MsgPackValue] = []
         a.reserveCapacity(n)
+        var i = 0
         for _ in 0 ..< n {
             a.append(scan())
+            i += 1
         }
         return .array(a)
     }
@@ -332,24 +367,15 @@ class MsgPackScanner {
     private func scanMap(_ c: UInt8) -> MsgPackValue {
         let n = getLength(c)
         var a: [MsgPackValue] = []
-        a.reserveCapacity(n)
+        a.reserveCapacity(n * 2)
         for _ in 0 ..< n {
-            let key = scan()
-            let val = scan()
-            a.append(key)
-            a.append(val)
+            a.append(scan())
+            a.append(scan())
         }
         return .map(a)
     }
 
     private func readOpCode() -> MsgPackOpCode {
-        if off < data.count {
-            defer {
-                off += 1
-            }
-            return MsgPackOpCode(ch: data[off])
-        } else {
-            return .end
-        }
+        !isAtEnd ? MsgPackOpCode(ch: readUInt8()) : .end
     }
 }

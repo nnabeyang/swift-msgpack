@@ -11,16 +11,18 @@ extension Array: _MsgPackArrayDecodableMarker where Element: Decodable {}
 open class MsgPackDecoder {
     public init() {}
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
-        let scanner: MsgPackScanner = .init(data: data)
-        let value = scanner.scan()
-        let decoder: _MsgPackDecoder = .init(from: value)
-        do {
-            return try decoder.unwrap(as: T.self)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(type, codingPath: [])
+        try data.withUnsafeBytes {
+            let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
+            let value = scanner.scan()
+            let decoder: _MsgPackDecoder = .init(from: value)
+            do {
+                return try decoder.unwrap(as: T.self)
+            } catch {
+                if let error = error as? MsgPackDecodingError {
+                    throw error.asDecodingError(type, codingPath: [])
+                }
+                throw error
             }
-            throw error
         }
     }
 }
@@ -91,7 +93,7 @@ private extension _MsgPackDecoder {
         if case let .literal(value) = value {
             switch value {
             case let .str(v):
-                return String(data: v, encoding: .utf8)
+                return String._tryFromUTF8(v)
             case .nil:
                 return nil
             default:
@@ -109,9 +111,9 @@ private extension _MsgPackDecoder {
         if case let .literal(f) = value {
             switch f {
             case let .float32(v):
-                return try T(Float(data: v))
+                return T(v)
             case let .float64(v):
-                return try T(Double(data: v))
+                return T(v)
             case .nil:
                 return nil
             default:
@@ -306,8 +308,10 @@ extension _MsgPackDecoder {
 
     func unwrapData() throws -> Data {
         switch value {
-        case let .literal(.bin(v)), let .literal(.str(v)):
+        case let .literal(.bin(v)):
             v
+        case let .literal(.str(v)):
+            .init(buffer: v)
         default:
             throw DecodingError.typeMismatch(Data.self, DecodingError.Context(codingPath: codingPath, debugDescription: ""))
         }
