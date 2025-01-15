@@ -107,13 +107,13 @@ private extension _MsgPackDecoder {
         ))
     }
 
-    func unboxFloat<T: BinaryFloatingPoint & DataNumber>(_ value: MsgPackValue, as type: T.Type) throws -> T? {
+    func unboxFloat32(_ value: MsgPackValue) throws -> Float? {
         if case let .literal(f) = value {
             switch f {
             case let .float32(v):
-                return T(v)
+                return v
             case let .float64(v):
-                return T(v)
+                return Float(v)
             case .nil:
                 return nil
             default:
@@ -121,9 +121,29 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(type, DecodingError.Context(
+        throw DecodingError.typeMismatch(Float.self, DecodingError.Context(
             codingPath: codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+            debugDescription: "Expected to decode \(Float.self) but found \(value.debugDataTypeDescription) instead."
+        ))
+    }
+
+    func unboxFloat64(_ value: MsgPackValue) throws -> Double? {
+        if case let .literal(f) = value {
+            switch f {
+            case let .float32(v):
+                return Double(v)
+            case let .float64(v):
+                return v
+            case .nil:
+                return nil
+            default:
+                break
+            }
+        }
+
+        throw DecodingError.typeMismatch(Double.self, DecodingError.Context(
+            codingPath: codingPath,
+            debugDescription: "Expected to decode \(Double.self) but found \(value.debugDataTypeDescription) instead."
         ))
     }
 
@@ -380,12 +400,12 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
         try decoder.unbox(value, as: type)!
     }
 
-    func decode(_ type: Double.Type) throws -> Double {
-        try decoder.unboxFloat(value, as: type)!
+    func decode(_: Double.Type) throws -> Double {
+        try decoder.unboxFloat64(value)!
     }
 
-    func decode(_ type: Float.Type) throws -> Float {
-        try decoder.unboxFloat(value, as: type)!
+    func decode(_: Float.Type) throws -> Float {
+        try decoder.unboxFloat32(value)!
     }
 
     func decode(_: Int.Type) throws -> Int {
@@ -496,11 +516,11 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     mutating func decode(_: Double.Type) throws -> Double {
-        try decodeFloat(as: Double.self)
+        try decodeFloat64()
     }
 
     mutating func decode(_: Float.Type) throws -> Float {
-        try decodeFloat(as: Float.self)
+        try decodeFloat32()
     }
 
     mutating func decode(_: Int.Type) throws -> Int {
@@ -669,9 +689,17 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     @inline(__always)
-    private mutating func decodeFloat<T: BinaryFloatingPoint & DataNumber>(as _: T.Type) throws -> T {
-        let value = try getNextValue(ofType: T.self)
-        let result = try decoder.unboxFloat(value, as: T.self)!
+    private mutating func decodeFloat32() throws -> Float {
+        let value = try getNextValue(ofType: Float.self)
+        let result = try decoder.unboxFloat32(value)!
+        currentIndex += 1
+        return result
+    }
+
+    @inline(__always)
+    private mutating func decodeFloat64() throws -> Double {
+        let value = try getNextValue(ofType: Double.self)
+        let result = try decoder.unboxFloat64(value)!
         currentIndex += 1
         return result
     }
@@ -734,11 +762,11 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     func decode(_: Double.Type, forKey key: Key) throws -> Double {
-        try decodeFloat(key: key)
+        try decodeFloat64(key: key)
     }
 
     func decode(_: Float.Type, forKey key: Key) throws -> Float {
-        try decodeFloat(key: key)
+        try decodeFloat32(key: key)
     }
 
     func decode(_: Int.Type, forKey key: Key) throws -> Int {
@@ -825,9 +853,15 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     @inline(__always)
-    private func decodeFloat<T: BinaryFloatingPoint & DataNumber>(key: K) throws -> T {
+    private func decodeFloat32(key: K) throws -> Float {
         let value = try getValue(forKey: key)
-        return try decoder.unboxFloat(value, as: T.self)!
+        return try decoder.unboxFloat32(value)!
+    }
+
+    @inline(__always)
+    private func decodeFloat64(key: K) throws -> Double {
+        let value = try getValue(forKey: key)
+        return try decoder.unboxFloat64(value)!
     }
 
     @inline(__always)
