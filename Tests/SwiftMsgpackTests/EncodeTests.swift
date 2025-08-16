@@ -57,7 +57,7 @@ final class EncodeTests: XCTestCase {
         // KeyedEncodingContainer
         t(in: Pair(X: 0x12, Y: 0x34), type: Pair<UInt8>.self, out: "82a15812a15934")
         t(in: PairStr(X: "abc", Y: "def"), type: PairStr.self, out: "82a158a3616263a159a3646566")
-        t(in: PairInt(X: -0x20, Y: -0x1F), type: PairInt.self, out: "82a158e0a159e1")
+        t(in: Pair<Int8>(X: -0x20, Y: -0x1F), type: Pair<Int8>.self, out: "82a158e0a159e1")
         t(in: [:], type: [String: Small].self, out: "80")
         t(in: [], type: [String].self, out: "90")
         t(in: nil, type: [String]?.self, out: "c0")

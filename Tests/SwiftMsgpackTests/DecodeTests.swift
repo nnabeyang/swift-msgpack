@@ -224,8 +224,6 @@ struct Pair<Integer: FixedWidthInteger & Codable>: Codable, Equatable {
     let Y: Integer
 }
 
-typealias PairInt = Pair<Int8>
-
 struct PairStr: Codable, Equatable {
     let X: String
     let Y: String
