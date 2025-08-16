@@ -587,23 +587,23 @@ private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer
     }
 
     public func encode(_ value: UInt) throws {
-        encoder.singleValue = try encoder.wrapUInt(value, for: nil)
+        try encodeUInt(value)
     }
 
     public func encode(_ value: UInt8) throws {
-        encoder.singleValue = try encoder.wrapUInt(value, for: nil)
+        try encodeUInt(value)
     }
 
     public func encode(_ value: UInt16) throws {
-        encoder.singleValue = try encoder.wrapUInt(value, for: nil)
+        try encodeUInt(value)
     }
 
     public func encode(_ value: UInt32) throws {
-        encoder.singleValue = try encoder.wrapUInt(value, for: nil)
+        try encodeUInt(value)
     }
 
     public func encode(_ value: UInt64) throws {
-        encoder.singleValue = try encoder.wrapUInt(value, for: nil)
+        try encodeUInt(value)
     }
 
     public func encode<T>(_ value: T) throws where T: Encodable {
@@ -613,6 +613,11 @@ private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer
     @inline(__always)
     private func encodeInt<T: SignedInteger & FixedWidthInteger>(_ value: T) throws {
         encoder.singleValue = try encoder.wrapInt(value, for: nil)
+    }
+
+    @inline(__always)
+    private func encodeUInt<T: UnsignedInteger & FixedWidthInteger>(_ value: T) throws {
+        encoder.singleValue = try encoder.wrapUInt(value, for: nil)
     }
 
     @inline(__always)
