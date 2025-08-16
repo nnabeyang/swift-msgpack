@@ -38,7 +38,7 @@ final class EncodeTests: XCTestCase {
         t(in: nil, type: [Int8]?.self, out: "c0")
         t(in: [0x12, 0x34, 0x56], type: [UInt8].self, out: "93123456")
         t(in: -0x20, type: Int8.self, out: "e0")
-        t(in: .init(X: 0x12, Y: 0x34), type: Pair.self, out: "82a15812a15934")
+        t(in: .init(X: 0x12, Y: 0x34), type: Pair<UInt8>.self, out: "82a15812a15934")
         t(in: .init(X: 0x12, Y: 0x34), type: PairArray.self, out: "921234")
         t(in: Opacity(a: 0x3D), type: Opacity.self, out: "d4013d")
         t(in: Position(x: 0x12, y: 0x34), type: Position.self, out: "d5021234")
@@ -55,7 +55,7 @@ final class EncodeTests: XCTestCase {
         t(in: FS(a: [2.34, 3.14]), type: FS.self, out: "92ca4015c28fca4048f5c3")
         t(in: BS(a: [false, true]), type: BS.self, out: "92c2c3")
         // KeyedEncodingContainer
-        t(in: Pair(X: 0x12, Y: 0x34), type: Pair.self, out: "82a15812a15934")
+        t(in: Pair(X: 0x12, Y: 0x34), type: Pair<UInt8>.self, out: "82a15812a15934")
         t(in: PairStr(X: "abc", Y: "def"), type: PairStr.self, out: "82a158a3616263a159a3646566")
         t(in: PairInt(X: -0x20, Y: -0x1F), type: PairInt.self, out: "82a158e0a159e1")
         t(in: [:], type: [String: Small].self, out: "80")
