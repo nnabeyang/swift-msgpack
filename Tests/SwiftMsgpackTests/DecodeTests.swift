@@ -40,7 +40,7 @@ final class DecodeTests: XCTestCase {
         t(in: "7f", type: Int32.self, out: 0x7F)
         t(in: "7f", type: Int64.self, out: 0x7F)
         t(in: "7f", type: Int.self, out: 0x7F)
-        t(in: "82a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
+        t(in: "82a15812a15934", type: Pair<UInt8>.self, out: Pair(X: 0x12, Y: 0x34))
         t(in: "82a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
         t(in: "81ab656d7074795f617272617990", type: [String: [String]].self, out: ["empty_array": []])
         t(in: "93123456", type: [UInt8].self, out: [0x12, 0x34, 0x56])
@@ -83,9 +83,9 @@ final class DecodeTests: XCTestCase {
         t(in: "dc00021234", type: PairArray.self, out: PairArray(X: 0x12, Y: 0x34))
         t(in: "dc0003a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
         t(in: "dd00000003a3616263a378797aa3646464", type: [String].self, out: ["abc", "xyz", "ddd"])
-        t(in: "de0002a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
+        t(in: "de0002a15812a15934", type: Pair<UInt8>.self, out: Pair(X: 0x12, Y: 0x34))
         t(in: "de0002a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
-        t(in: "df00000002a15812a15934", type: Pair.self, out: Pair(X: 0x12, Y: 0x34))
+        t(in: "df00000002a15812a15934", type: Pair<UInt8>.self, out: Pair(X: 0x12, Y: 0x34))
         t(in: "df00000002a15812a15934", type: [String: UInt8].self, out: ["X": 0x12, "Y": 0x34])
         t(in: "e0", type: Int8.self, out: -0x20)
         t(in: "e0", type: Int16.self, out: -0x20)
@@ -158,6 +158,14 @@ final class DecodeTests: XCTestCase {
         XCTAssertEqual(dict.count, 1)
         XCTAssertEqual(dict["key"], AnyCodable(0x34))
     }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func testInt128AndUInt128Decoding() {
+        t(in: "cf0000004b6b34abcc", type: UInt128.self, out: 0x4B_6B34_ABCC)
+        t(in: "82a15800a159cfffffffffffffffff", type: Pair<UInt128>.self, out: Pair(X: UInt128(UInt64.min), Y: UInt128(UInt64.max)))
+        t(in: "d3ffffffb494cb5434", type: Int128.self, out: -0x4B_6B34_ABCC)
+        t(in: "82a158d38000000000000000a159d37fffffffffffffff", type: Pair<Int128>.self, out: Pair(X: Int128(Int64.min), Y: Int128(Int64.max)))
+    }
 }
 
 private struct AnyCodingKeys: CodingKey {
@@ -219,14 +227,9 @@ private extension Data {
     }
 }
 
-struct Pair: Codable, Equatable {
-    let X: UInt8
-    let Y: UInt8
-}
-
-struct PairInt: Codable, Equatable {
-    let X: Int8
-    let Y: Int8
+struct Pair<Integer: FixedWidthInteger & Codable>: Codable, Equatable {
+    let X: Integer
+    let Y: Integer
 }
 
 struct PairStr: Codable, Equatable {

@@ -4,12 +4,20 @@ import XCTest
 final class EncodeTests: XCTestCase {
     private let encoder = MsgPackEncoder()
 
-    private func t<X: Encodable>(in input: X, type _: X.Type, out: String, file: StaticString = #filePath, line: UInt = #line) {
+    private func t<X: Encodable>(in input: X, type _: X.Type, out: String, errorType: Error.Type? = nil, file: StaticString = #filePath, line: UInt = #line) {
         do {
             let actual = try encoder.encode(input)
+            if errorType != nil {
+                XCTFail("errorType is should be nil", file: file, line: line)
+                return
+            }
             XCTAssertEqual(actual.hexDescription, out, file: file, line: line)
         } catch {
-            XCTFail("unexpected error: \(error)", file: file, line: line)
+            guard let errorType = errorType else {
+                XCTFail("unexpected error: \(error)", file: file, line: line)
+                return
+            }
+            XCTAssertTrue(type(of: error) == errorType, "expected: \(errorType), got: \(type(of: error))", file: file, line: line)
         }
     }
 
@@ -38,7 +46,7 @@ final class EncodeTests: XCTestCase {
         t(in: nil, type: [Int8]?.self, out: "c0")
         t(in: [0x12, 0x34, 0x56], type: [UInt8].self, out: "93123456")
         t(in: -0x20, type: Int8.self, out: "e0")
-        t(in: .init(X: 0x12, Y: 0x34), type: Pair.self, out: "82a15812a15934")
+        t(in: .init(X: 0x12, Y: 0x34), type: Pair<UInt8>.self, out: "82a15812a15934")
         t(in: .init(X: 0x12, Y: 0x34), type: PairArray.self, out: "921234")
         t(in: Opacity(a: 0x3D), type: Opacity.self, out: "d4013d")
         t(in: Position(x: 0x12, y: 0x34), type: Position.self, out: "d5021234")
@@ -55,12 +63,27 @@ final class EncodeTests: XCTestCase {
         t(in: FS(a: [2.34, 3.14]), type: FS.self, out: "92ca4015c28fca4048f5c3")
         t(in: BS(a: [false, true]), type: BS.self, out: "92c2c3")
         // KeyedEncodingContainer
-        t(in: Pair(X: 0x12, Y: 0x34), type: Pair.self, out: "82a15812a15934")
+        t(in: Pair(X: 0x12, Y: 0x34), type: Pair<UInt8>.self, out: "82a15812a15934")
         t(in: PairStr(X: "abc", Y: "def"), type: PairStr.self, out: "82a158a3616263a159a3646566")
-        t(in: PairInt(X: -0x20, Y: -0x1F), type: PairInt.self, out: "82a158e0a159e1")
+        t(in: Pair<Int8>(X: -0x20, Y: -0x1F), type: Pair<Int8>.self, out: "82a158e0a159e1")
         t(in: [:], type: [String: Small].self, out: "80")
         t(in: [], type: [String].self, out: "90")
         t(in: nil, type: [String]?.self, out: "c0")
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func testInt128AndUInt128Encoding() {
+        t(in: Pair<UInt128>(X: UInt128(UInt64.min), Y: UInt128(UInt64.max) + 1), type: Pair<UInt128>.self, out: "", errorType: EncodingError.self)
+        t(in: Pair<UInt128>(X: UInt128(UInt64.min), Y: UInt128(UInt64.max)), type: Pair<UInt128>.self, out: "82a15800a159cfffffffffffffffff")
+        t(in: UInt128(UInt64.min), type: UInt128.self, out: "00")
+        t(in: UInt128(UInt64.max), type: UInt128.self, out: "cfffffffffffffffff")
+        t(in: UInt128(UInt64.max) + 1, type: UInt128.self, out: "", errorType: EncodingError.self)
+        t(in: Pair<Int128>(X: Int128(Int64.min) - 1, Y: Int128(Int64.max)), type: Pair<Int128>.self, out: "", errorType: EncodingError.self)
+        t(in: Pair<Int128>(X: Int128(Int64.min), Y: Int128(Int64.max)), type: Pair<Int128>.self, out: "82a158d38000000000000000a159d37fffffffffffffff")
+        t(in: Int128(Int64.min), type: Int128.self, out: "d38000000000000000")
+        t(in: Int128(Int64.max), type: Int128.self, out: "d37fffffffffffffff")
+        t(in: Int128(Int64.min) - 1, type: Int128.self, out: "", errorType: EncodingError.self)
+        t(in: Int128(Int64.max) + 1, type: Int128.self, out: "", errorType: EncodingError.self)
     }
 }
 
