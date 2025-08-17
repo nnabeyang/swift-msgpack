@@ -4,12 +4,20 @@ import XCTest
 final class EncodeTests: XCTestCase {
     private let encoder = MsgPackEncoder()
 
-    private func t<X: Encodable>(in input: X, type _: X.Type, out: String, file: StaticString = #filePath, line: UInt = #line) {
+    private func t<X: Encodable>(in input: X, type _: X.Type, out: String, errorType: Error.Type? = nil, file: StaticString = #filePath, line: UInt = #line) {
         do {
             let actual = try encoder.encode(input)
+            if errorType != nil {
+                XCTFail("errorType is should be nil", file: file, line: line)
+                return
+            }
             XCTAssertEqual(actual.hexDescription, out, file: file, line: line)
         } catch {
-            XCTFail("unexpected error: \(error)", file: file, line: line)
+            guard let errorType = errorType else {
+                XCTFail("unexpected error: \(error)", file: file, line: line)
+                return
+            }
+            XCTAssertTrue(type(of: error) == errorType, "expected: \(errorType), got: \(type(of: error))", file: file, line: line)
         }
     }
 
@@ -61,6 +69,21 @@ final class EncodeTests: XCTestCase {
         t(in: [:], type: [String: Small].self, out: "80")
         t(in: [], type: [String].self, out: "90")
         t(in: nil, type: [String]?.self, out: "c0")
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func testInt128AndUInt128Encoding() {
+        t(in: Pair<UInt128>(X: UInt128(UInt64.min), Y: UInt128(UInt64.max) + 1), type: Pair<UInt128>.self, out: "", errorType: EncodingError.self)
+        t(in: Pair<UInt128>(X: UInt128(UInt64.min), Y: UInt128(UInt64.max)), type: Pair<UInt128>.self, out: "82a15800a159cfffffffffffffffff")
+        t(in: UInt128(UInt64.min), type: UInt128.self, out: "00")
+        t(in: UInt128(UInt64.max), type: UInt128.self, out: "cfffffffffffffffff")
+        t(in: UInt128(UInt64.max) + 1, type: UInt128.self, out: "", errorType: EncodingError.self)
+        t(in: Pair<Int128>(X: Int128(Int64.min) - 1, Y: Int128(Int64.max)), type: Pair<Int128>.self, out: "", errorType: EncodingError.self)
+        t(in: Pair<Int128>(X: Int128(Int64.min), Y: Int128(Int64.max)), type: Pair<Int128>.self, out: "82a158d38000000000000000a159d37fffffffffffffff")
+        t(in: Int128(Int64.min), type: Int128.self, out: "d38000000000000000")
+        t(in: Int128(Int64.max), type: Int128.self, out: "d37fffffffffffffff")
+        t(in: Int128(Int64.min) - 1, type: Int128.self, out: "", errorType: EncodingError.self)
+        t(in: Int128(Int64.max) + 1, type: Int128.self, out: "", errorType: EncodingError.self)
     }
 }
 

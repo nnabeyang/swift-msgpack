@@ -586,6 +586,11 @@ private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer
         try encodeInt(value)
     }
 
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: Int128) throws {
+        try encodeInt(value)
+    }
+
     public func encode(_ value: UInt) throws {
         try encodeUInt(value)
     }
@@ -603,6 +608,11 @@ private struct MsgPackSingleValueEncodingContainer: SingleValueEncodingContainer
     }
 
     public func encode(_ value: UInt64) throws {
+        try encodeUInt(value)
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: UInt128) throws {
         try encodeUInt(value)
     }
 
@@ -806,6 +816,11 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
         try encodeInt(value, for: key)
     }
 
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: Int128, forKey key: Key) throws {
+        try encodeInt(value, for: key)
+    }
+
     func encode(_ value: UInt, forKey key: Key) throws {
         try encodeUInt(value, forKey: key)
     }
@@ -823,6 +838,11 @@ private struct MsgPackKeyedEncodingContainer<K: CodingKey>: KeyedEncodingContain
     }
 
     func encode(_ value: UInt64, forKey key: Key) throws {
+        try encodeUInt(value, forKey: key)
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    public func encode(_ value: UInt128, forKey key: Key) throws {
         try encodeUInt(value, forKey: key)
     }
 
