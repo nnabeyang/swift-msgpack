@@ -400,19 +400,19 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     mutating func decode(_: Int8.Type) throws -> Int8 {
-        try decodeInt8()
+        try decodeInt()
     }
 
     mutating func decode(_: Int16.Type) throws -> Int16 {
-        try decodeInt16()
+        try decodeInt()
     }
 
     mutating func decode(_: Int32.Type) throws -> Int32 {
-        try decodeInt32()
+        try decodeInt()
     }
 
     mutating func decode(_: Int64.Type) throws -> Int64 {
-        try decodeInt64()
+        try decodeInt()
     }
 
     mutating func decode(_: UInt.Type) throws -> UInt {
@@ -420,19 +420,19 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     mutating func decode(_: UInt8.Type) throws -> UInt8 {
-        try decodeUInt8()
+        try decodeUInt()
     }
 
     mutating func decode(_: UInt16.Type) throws -> UInt16 {
-        try decodeUInt16()
+        try decodeUInt()
     }
 
     mutating func decode(_: UInt32.Type) throws -> UInt32 {
-        try decodeUInt32()
+        try decodeUInt()
     }
 
     mutating func decode64(_: UInt64.Type) throws -> UInt64 {
-        try decodeUInt64()
+        try decodeUInt()
     }
 
     mutating func decode<T>(_ type: T.Type) throws -> T where T: Decodable {
@@ -481,92 +481,20 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     @inline(__always)
-    private mutating func decodeUInt() throws -> UInt {
+    private mutating func decodeUInt<T: UnsignedInteger & FixedWidthInteger>() throws -> T {
         defer {
             currentIndex += 1
         }
-        let value = try getNextValue(ofType: UInt.self)
+        let value = try getNextValue(ofType: T.self)
         return try decoder.unboxUInt(value)
     }
 
     @inline(__always)
-    private mutating func decodeUInt8() throws -> UInt8 {
+    private mutating func decodeInt<T: SignedInteger & FixedWidthInteger>() throws -> T {
         defer {
             currentIndex += 1
         }
-        let value = try getNextValue(ofType: UInt8.self)
-        return try decoder.unboxUInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeUInt16() throws -> UInt16 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: UInt16.self)
-        return try decoder.unboxUInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeUInt32() throws -> UInt32 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: UInt32.self)
-        return try decoder.unboxUInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeUInt64() throws -> UInt64 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: UInt64.self)
-        return try decoder.unboxUInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeInt() throws -> Int {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: Int.self)
-        return try decoder.unboxInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeInt8() throws -> Int8 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: Int8.self)
-        return try decoder.unboxInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeInt16() throws -> Int16 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: Int16.self)
-        return try decoder.unboxInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeInt32() throws -> Int32 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: Int32.self)
-        return try decoder.unboxInt(value)
-    }
-
-    @inline(__always)
-    private mutating func decodeInt64() throws -> Int64 {
-        defer {
-            currentIndex += 1
-        }
-        let value = try getNextValue(ofType: Int64.self)
+        let value = try getNextValue(ofType: T.self)
         return try decoder.unboxInt(value)
     }
 
@@ -656,19 +584,19 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     func decode(_: Int8.Type, forKey key: Key) throws -> Int8 {
-        try decodeInt8(key: key)
+        try decodeInt(key: key)
     }
 
     func decode(_: Int16.Type, forKey key: Key) throws -> Int16 {
-        try decodeInt16(key: key)
+        try decodeInt(key: key)
     }
 
     func decode(_: Int32.Type, forKey key: Key) throws -> Int32 {
-        try decodeInt32(key: key)
+        try decodeInt(key: key)
     }
 
     func decode(_: Int64.Type, forKey key: Key) throws -> Int64 {
-        try decodeInt64(key: key)
+        try decodeInt(key: key)
     }
 
     func decode(_: UInt.Type, forKey key: Key) throws -> UInt {
@@ -676,19 +604,19 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     func decode(_: UInt8.Type, forKey key: Key) throws -> UInt8 {
-        try decodeUInt8(key: key)
+        try decodeUInt(key: key)
     }
 
     func decode(_: UInt16.Type, forKey key: Key) throws -> UInt16 {
-        try decodeUInt16(key: key)
+        try decodeUInt(key: key)
     }
 
     func decode(_: UInt32.Type, forKey key: Key) throws -> UInt32 {
-        try decodeUInt32(key: key)
+        try decodeUInt(key: key)
     }
 
     func decode(_: UInt64.Type, forKey key: Key) throws -> UInt64 {
-        try decodeUInt64(key: key)
+        try decodeUInt(key: key)
     }
 
     func decode<T>(_ type: T.Type, forKey key: Key) throws -> T where T: Decodable {
@@ -747,130 +675,26 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     @inline(__always)
-    private func decodeInt(key: K) throws -> Int {
+    private func decodeInt<T: SignedInteger & FixedWidthInteger>(key: K) throws -> T {
         let value = try getValue(forKey: key)
         do {
             return try decoder.unboxInt(value)
         } catch {
             if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(Int.self, codingPath: codingPath)
+                throw error.asDecodingError(T.self, codingPath: codingPath)
             }
             throw error
         }
     }
 
     @inline(__always)
-    private func decodeInt8(key: K) throws -> Int8 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(Int8.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeInt16(key: K) throws -> Int16 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(Int16.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeInt32(key: K) throws -> Int32 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(Int32.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeInt64(key: K) throws -> Int64 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(Int64.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeUInt(key: K) throws -> UInt {
+    private func decodeUInt<T: UnsignedInteger & FixedWidthInteger>(key: K) throws -> T {
         let value = try getValue(forKey: key)
         do {
             return try decoder.unboxUInt(value)
         } catch {
             if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(UInt.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeUInt8(key: K) throws -> UInt8 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxUInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(UInt8.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeUInt16(key: K) throws -> UInt16 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxUInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(UInt16.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeUInt32(key: K) throws -> UInt32 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxUInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(UInt32.self, codingPath: codingPath)
-            }
-            throw error
-        }
-    }
-
-    @inline(__always)
-    private func decodeUInt64(key: K) throws -> UInt64 {
-        let value = try getValue(forKey: key)
-        do {
-            return try decoder.unboxUInt(value)
-        } catch {
-            if let error = error as? MsgPackDecodingError {
-                throw error.asDecodingError(UInt64.self, codingPath: codingPath)
+                throw error.asDecodingError(T.self, codingPath: codingPath)
             }
             throw error
         }
