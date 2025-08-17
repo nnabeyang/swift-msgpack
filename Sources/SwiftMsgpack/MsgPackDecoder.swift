@@ -300,6 +300,11 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
         try decoder.unboxInt(value)
     }
 
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func decode(_: Int128.Type) throws -> Int128 {
+        try decoder.unboxInt(value)
+    }
+
     func decode(_: UInt.Type) throws -> UInt {
         try decoder.unboxUInt(value)
     }
@@ -317,6 +322,11 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
     }
 
     func decode(_: UInt64.Type) throws -> UInt64 {
+        try decoder.unboxUInt(value)
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func decode(_: UInt128.Type) throws -> UInt128 {
         try decoder.unboxUInt(value)
     }
 
@@ -415,6 +425,11 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
         try decodeInt()
     }
 
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func decode(_: Int128.Type) throws -> Int128 {
+        try decodeInt()
+    }
+
     mutating func decode(_: UInt.Type) throws -> UInt {
         try decodeUInt()
     }
@@ -432,6 +447,11 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     mutating func decode64(_: UInt64.Type) throws -> UInt64 {
+        try decodeUInt()
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    mutating func decode(_: UInt128.Type) throws -> UInt128 {
         try decodeUInt()
     }
 
@@ -599,6 +619,11 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
         try decodeInt(key: key)
     }
 
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func decode(_: Int128.Type, forKey key: Key) throws -> Int128 {
+        try decodeInt(key: key)
+    }
+
     func decode(_: UInt.Type, forKey key: Key) throws -> UInt {
         try decodeUInt(key: key)
     }
@@ -616,6 +641,11 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     func decode(_: UInt64.Type, forKey key: Key) throws -> UInt64 {
+        try decodeUInt(key: key)
+    }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func decode(_: UInt128.Type, forKey key: Key) throws -> UInt128 {
         try decodeUInt(key: key)
     }
 

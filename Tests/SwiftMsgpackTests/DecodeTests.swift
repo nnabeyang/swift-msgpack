@@ -158,6 +158,14 @@ final class DecodeTests: XCTestCase {
         XCTAssertEqual(dict.count, 1)
         XCTAssertEqual(dict["key"], AnyCodable(0x34))
     }
+
+    @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
+    func testInt128AndUInt128Decoding() {
+        t(in: "cf0000004b6b34abcc", type: UInt128.self, out: 0x4B_6B34_ABCC)
+        t(in: "82a15800a159cfffffffffffffffff", type: Pair<UInt128>.self, out: Pair(X: UInt128(UInt64.min), Y: UInt128(UInt64.max)))
+        t(in: "d3ffffffb494cb5434", type: Int128.self, out: -0x4B_6B34_ABCC)
+        t(in: "82a158d38000000000000000a159d37fffffffffffffff", type: Pair<Int128>.self, out: Pair(X: Int128(Int64.min), Y: Int128(Int64.max)))
+    }
 }
 
 private struct AnyCodingKeys: CodingKey {
