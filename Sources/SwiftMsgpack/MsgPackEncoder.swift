@@ -28,9 +28,30 @@ open class MsgPackEncoder {
         return Data(bytes)
     }
 
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    open func encode<T: EncodableWithConfiguration>(_ value: T, configuration: T.EncodingConfiguration) throws -> Data {
+        let value: MsgPackEncodedValue = try encodeAsMsgPackValue(value, configuration: configuration)
+        let writer = MsgPackValue.Writer()
+        let bytes = writer.writeValue(value)
+        return Data(bytes)
+    }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    open func encode<T, C>(_ value: T, configuration: C.Type) throws -> Data where T: EncodableWithConfiguration, C: EncodingConfigurationProviding, T.EncodingConfiguration == C.EncodingConfiguration {
+        try encode(value, configuration: C.encodingConfiguration)
+    }
+
     func encodeAsMsgPackValue<T: Encodable>(_ value: T) throws -> MsgPackEncodedValue {
         let encoder = _MsgPackEncoder(codingPath: [], options: options)
         guard let result = try encoder.wrapEncodable(value, for: CodingKey?.none) else {
+            throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: [], debugDescription: "Top-level \(T.self) did not encode any values."))
+        }
+        return result
+    }
+
+    func encodeAsMsgPackValue<T: EncodableWithConfiguration>(_ value: T, configuration: T.EncodingConfiguration) throws -> MsgPackEncodedValue {
+        let encoder = _MsgPackEncoder(codingPath: [], options: options)
+        guard let result = try encoder.wrapEncodable(value, configuration: configuration, for: CodingKey?.none) else {
             throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: [], debugDescription: "Top-level \(T.self) did not encode any values."))
         }
         return result
@@ -440,6 +461,29 @@ private extension _SpecialTreatmentEncoder {
             return try wrapMsgPackEncodable(msgPack, for: additionalKey)
         default:
             try encodable.encode(to: encoder)
+        }
+
+        if let anyCodable = encodable as? AnyCodable {
+            if anyCodable.base as? _MsgPackDictionaryEncodableMarker != nil {
+                return encoder.value?.asMap()
+            }
+        } else {
+            if (encodable as? _MsgPackDictionaryEncodableMarker) != nil {
+                return encoder.value?.asMap()
+            }
+        }
+        return encoder.value
+    }
+
+    func wrapEncodable<E: EncodableWithConfiguration>(_ encodable: E, configuration: E.EncodingConfiguration, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue? {
+        let encoder = getEncoder(for: additionalKey)
+        switch encodable {
+        case let data as Data:
+            return try wrapData(data, for: additionalKey)
+        case let msgPack as MsgPackEncodable:
+            return try wrapMsgPackEncodable(msgPack, for: additionalKey)
+        default:
+            try encodable.encode(to: encoder, configuration: configuration)
         }
 
         if let anyCodable = encodable as? AnyCodable {

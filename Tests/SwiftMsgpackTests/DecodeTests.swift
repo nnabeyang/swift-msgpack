@@ -166,6 +166,37 @@ final class DecodeTests: XCTestCase {
         t(in: "d3ffffffb494cb5434", type: Int128.self, out: -0x4B_6B34_ABCC)
         t(in: "82a158d38000000000000000a159d37fffffffffffffff", type: Pair<Int128>.self, out: Pair(X: Int128(Int64.min), Y: Int128(Int64.max)))
     }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    func testWithConfigurationAppliesConfiguration() throws {
+        let encoder = MsgPackEncoder()
+        let original = 30
+        let data = try encoder.encode(original)
+
+        let decoder = MsgPackDecoder()
+        let decoded = try decoder.decode(
+            ConfiguredInt.self,
+            from: data,
+            configuration: TestConfig(multiplier: 3)
+        )
+
+        XCTAssertEqual(decoded, ConfiguredInt(value: 10))
+    }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    func testWithConfigurationProvider() throws {
+        let encoder = MsgPackEncoder()
+        let data = try encoder.encode(100)
+
+        let decoder = MsgPackDecoder()
+        let decoded = try decoder.decode(
+            ConfiguredInt.self,
+            from: data,
+            configuration: TestConfigProvider.self
+        )
+
+        XCTAssertEqual(decoded, ConfiguredInt(value: 50))
+    }
 }
 
 private struct AnyCodingKeys: CodingKey {
@@ -428,5 +459,39 @@ private struct Pairs: Decodable, Equatable {
             b.append(.init(X: x, Y: y))
         }
         a = b
+    }
+}
+
+@available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+struct TestConfig: Sendable {
+    let multiplier: Int
+}
+
+@available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+enum TestConfigProvider: EncodingConfigurationProviding, DecodingConfigurationProviding {
+    static let encodingConfiguration = TestConfig(multiplier: 2)
+    static let decodingConfiguration = TestConfig(multiplier: 2)
+}
+
+@available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+struct ConfiguredInt: CodableWithConfiguration, Equatable {
+    typealias EncodingConfiguration = TestConfig
+    typealias DecodingConfiguration = TestConfig
+
+    let value: Int
+
+    init(value: Int) {
+        self.value = value
+    }
+
+    init(from decoder: Decoder, configuration: DecodingConfiguration) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(Int.self)
+        value = raw / configuration.multiplier
+    }
+
+    func encode(to encoder: Encoder, configuration: EncodingConfiguration) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value * configuration.multiplier)
     }
 }
