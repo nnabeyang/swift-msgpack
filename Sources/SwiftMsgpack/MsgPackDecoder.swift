@@ -25,6 +25,28 @@ open class MsgPackDecoder {
             }
         }
     }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    open func decode<T: DecodableWithConfiguration>(_ type: T.Type, from data: Data, configuration: T.DecodingConfiguration) throws -> T {
+        try data.withUnsafeBytes {
+            let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
+            let value = scanner.scan()
+            let decoder: _MsgPackDecoder = .init(from: value)
+            do {
+                return try decoder.unwrap(as: T.self, configuration: configuration)
+            } catch {
+                if let error = error as? MsgPackDecodingError {
+                    throw error.asDecodingError(type, codingPath: [])
+                }
+                throw error
+            }
+        }
+    }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    open func decode<T, C>(_ type: T.Type, from data: Data, configuration: C.Type) throws -> T where T: DecodableWithConfiguration, C: DecodingConfigurationProviding, T.DecodingConfiguration == C.DecodingConfiguration {
+        try decode(type, from: data, configuration: C.decodingConfiguration)
+    }
 }
 
 public protocol MsgPackDecodable: Decodable {
@@ -196,6 +218,10 @@ extension _MsgPackDecoder {
             try checkArray(as: T.self)
         }
         return try T(from: self)
+    }
+
+    func unwrap<T: DecodableWithConfiguration>(as type: T.Type, configuration: T.DecodingConfiguration) throws -> T {
+        try type.init(from: self, configuration: configuration)
     }
 
     func unwrapData() throws -> Data {

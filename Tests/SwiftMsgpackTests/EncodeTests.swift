@@ -85,6 +85,24 @@ final class EncodeTests: XCTestCase {
         t(in: Int128(Int64.min) - 1, type: Int128.self, out: "", errorType: EncodingError.self)
         t(in: Int128(Int64.max) + 1, type: Int128.self, out: "", errorType: EncodingError.self)
     }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    func testWithConfiguration_appliesConfiguration() throws {
+        let encoder = MsgPackEncoder()
+        let value = ConfiguredInt(value: 21)
+
+        let data = try encoder.encode(value, configuration: TestConfig(multiplier: 2))
+        XCTAssertEqual(data.hexDescription, "2a")
+    }
+
+    @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
+    func testWithConfigurationProvider() throws {
+        let encoder = MsgPackEncoder()
+        let value = ConfiguredInt(value: 10)
+
+        let data = try encoder.encode(value, configuration: TestConfigProvider.self)
+        XCTAssertEqual(data.hexDescription, "14")
+    }
 }
 
 extension Data {
