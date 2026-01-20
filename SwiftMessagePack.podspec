@@ -5,8 +5,8 @@ Pod::Spec.new do |s|
   s.homepage              = "https://github.com/nnabeyang/swift-msgpack"
   s.license               = { :type => "MIT", :file => "LICENSE" }
   s.author                = { "Noriaki Watanabe" => "nabeyang@gmail.com" }
-  s.ios.deployment_target = "13.0"
-  s.osx.deployment_target = "10.15"
+  s.ios.deployment_target = "15.0"
+  s.osx.deployment_target = "12.0"
 
   s.source       = { :git => "https://github.com/nnabeyang/swift-msgpack.git", :tag => "#{s.version}" }
   s.source_files  = "Sources/**/*.swift"
