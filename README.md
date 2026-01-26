@@ -3,9 +3,9 @@
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnnabeyang%2Fswift-msgpack%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/nnabeyang/swift-msgpack)
 [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnnabeyang%2Fswift-msgpack%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/nnabeyang/swift-msgpack)
 
-[MessagePack](http://msgpack.org) is an efficient binary serialization format that lets you exchange data among multiple languages like JSON but in a more compact and faster form.  
-Small integers can be encoded in a single byte, and short strings require only a prefix plus the original byte array.  
-MessagePack implementations are available in various languages (see the list on http://msgpack.org).  
+[MessagePack](https://msgpack.io) is an efficient binary serialization format that lets you exchange data among multiple languages like JSON but in a more compact and faster form.
+Small integers can be encoded in a single byte, and short strings require only a prefix plus the original byte array.
+MessagePack implementations are available in various languages (see the list on https://msgpack.io).
 For the specification, see https://github.com/msgpack/msgpack/blob/master/spec.md.
 
 **MessagePack implementation for Swift**  
