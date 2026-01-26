@@ -1,8 +1,7 @@
 # swift-msgpack
 
-[![Linux](https://img.shields.io/badge/platform-linux-blue.svg)](https://github.com/nnabeyang/swift-msgpack)
-[![iOS](https://img.shields.io/badge/platform-iOS-lightgrey.svg)](https://github.com/nnabeyang/swift-msgpack)
-[![macOS](https://img.shields.io/badge/platform-macOS-black.svg)](https://github.com/nnabeyang/swift-msgpack)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnnabeyang%2Fswift-msgpack%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/nnabeyang/swift-msgpack)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnnabeyang%2Fswift-msgpack%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/nnabeyang/swift-msgpack)
 
 [MessagePack](http://msgpack.org) is an efficient binary serialization format that lets you exchange data among multiple languages like JSON but in a more compact and faster form.  
 Small integers can be encoded in a single byte, and short strings require only a prefix plus the original byte array.  
