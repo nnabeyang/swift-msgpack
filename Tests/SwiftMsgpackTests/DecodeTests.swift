@@ -144,6 +144,26 @@ final class DecodeTests: XCTestCase {
         t(in: "7f", type: Bool.self, out: true, errorType: DecodingError.self)
     }
 
+    func testDecodeFloatSpecials() throws {
+        XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cb7ff0000000000000")), .infinity)
+        XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cbfff0000000000000")), -.infinity)
+        XCTAssertTrue(try decoder.decode(Double.self, from: Data(hex: "cb7ff8000000000000")).isNaN)
+        XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "ca7f800000")), .infinity)
+        XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "caff800000")), -.infinity)
+        XCTAssertTrue(try decoder.decode(Float.self, from: Data(hex: "ca7fc00000")).isNaN)
+    }
+
+    func testEncodeFloatSpecials() throws {
+        for v: Double in [.infinity, -.infinity] {
+            XCTAssertEqual(try decoder.decode(Double.self, from: encoder.encode(v)), v)
+        }
+        XCTAssertTrue(try decoder.decode(Double.self, from: encoder.encode(Double.nan)).isNaN)
+        for v: Float in [.infinity, -.infinity] {
+            XCTAssertEqual(try decoder.decode(Float.self, from: encoder.encode(v)), v)
+        }
+        XCTAssertTrue(try decoder.decode(Float.self, from: encoder.encode(Float.nan)).isNaN)
+    }
+
     func testEncode() throws {
         let data = try encoder.encode(All.value)
         let actual = try decoder.decode(All.self, from: data)
