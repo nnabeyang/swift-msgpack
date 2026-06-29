@@ -124,6 +124,17 @@ final class DecodeTests: XCTestCase {
         t(in: "92921234925678", type: UIS2.self, out: UIS2(a: [[0x12, 0x34], [0x56, 0x78]]))
         // nestedContainer
         t(in: "9282a15812a1593482a15812a15934", type: Pairs.self, out: Pairs(a: [.init(X: 0x12, Y: 0x34), .init(X: 0x12, Y: 0x34)]))
+        // ext32 (0xC9): 4-byte length header carrying a 1-byte payload
+        t(in: "c900000001013d", type: Opacity.self, out: Opacity(a: 0x3D))
+        // 32-bit container headers (array32 / map32 / str32) with small bodies
+        t(in: "dd00000003010203", type: [UInt8].self, out: [0x01, 0x02, 0x03])
+        t(in: "df00000001a17801", type: [String: UInt8].self, out: ["x": 0x01])
+        t(in: "db00000003616263", type: String.self, out: "abc")
+        // Unicode diversity
+        t(in: "a4f09f8e89", type: String.self, out: "🎉")
+        t(in: "ab48656c6c6fe4b896e7958c", type: String.self, out: "Hello世界")
+        t(in: "b2f09f91a8e2808df09f91a9e2808df09f91a7", type: String.self, out: "👨\u{200D}👩\u{200D}👧")
+        t(in: "a365cc81", type: String.self, out: "e\u{0301}")
         // typeMismatch
         t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
         t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
@@ -131,6 +142,26 @@ final class DecodeTests: XCTestCase {
         t(in: "c3", type: String.self, out: "", errorType: DecodingError.self)
         t(in: "c3", type: Data.self, out: .init(), errorType: DecodingError.self)
         t(in: "7f", type: Bool.self, out: true, errorType: DecodingError.self)
+    }
+
+    func testDecodeFloatSpecials() throws {
+        XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cb7ff0000000000000")), .infinity)
+        XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cbfff0000000000000")), -.infinity)
+        XCTAssertTrue(try decoder.decode(Double.self, from: Data(hex: "cb7ff8000000000000")).isNaN)
+        XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "ca7f800000")), .infinity)
+        XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "caff800000")), -.infinity)
+        XCTAssertTrue(try decoder.decode(Float.self, from: Data(hex: "ca7fc00000")).isNaN)
+    }
+
+    func testEncodeFloatSpecials() throws {
+        for v: Double in [.infinity, -.infinity] {
+            XCTAssertEqual(try decoder.decode(Double.self, from: encoder.encode(v)), v)
+        }
+        XCTAssertTrue(try decoder.decode(Double.self, from: encoder.encode(Double.nan)).isNaN)
+        for v: Float in [.infinity, -.infinity] {
+            XCTAssertEqual(try decoder.decode(Float.self, from: encoder.encode(v)), v)
+        }
+        XCTAssertTrue(try decoder.decode(Float.self, from: encoder.encode(Float.nan)).isNaN)
     }
 
     func testEncode() throws {
