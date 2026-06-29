@@ -130,6 +130,11 @@ final class DecodeTests: XCTestCase {
         t(in: "dd00000003010203", type: [UInt8].self, out: [0x01, 0x02, 0x03])
         t(in: "df00000001a17801", type: [String: UInt8].self, out: ["x": 0x01])
         t(in: "db00000003616263", type: String.self, out: "abc")
+        // Unicode diversity
+        t(in: "a4f09f8e89", type: String.self, out: "🎉")
+        t(in: "ab48656c6c6fe4b896e7958c", type: String.self, out: "Hello世界")
+        t(in: "b2f09f91a8e2808df09f91a9e2808df09f91a7", type: String.self, out: "👨\u{200D}👩\u{200D}👧")
+        t(in: "a365cc81", type: String.self, out: "e\u{0301}")
         // typeMismatch
         t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
         t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
