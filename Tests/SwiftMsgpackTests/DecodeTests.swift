@@ -2,31 +2,42 @@ import XCTest
 @testable import SwiftMsgpack
 
 final class DecodeTests: XCTestCase {
-    let decoder: MsgPackDecoder = .init()
+    static let allModes: [(MsgPackDecoder.DecodingOption, String)] = [
+        ([], "eager"),
+        (.lazyScan, "lazy"),
+    ]
+
     let encoder: MsgPackEncoder = .init()
+
     private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil,
                                              file: StaticString = #filePath, line: UInt = #line)
     {
-        do {
-            let actual = try decoder.decode(typ, from: Data(hex: input))
-            if errorType != nil {
-                XCTFail("errorType is should be nil", file: file, line: line)
-                return
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            do {
+                let actual = try decoder.decode(typ, from: Data(hex: input))
+                if errorType != nil {
+                    XCTFail("errorType is should be nil (mode: \(label))", file: file, line: line)
+                    continue
+                }
+                XCTAssertEqual(actual, out, "mode: \(label)", file: file, line: line)
+            } catch {
+                guard let errorType = errorType else {
+                    XCTFail("unexpected error: \(error) (mode: \(label))", file: file, line: line)
+                    continue
+                }
+                XCTAssertTrue(type(of: error) == errorType, "expected: \(errorType), got: \(type(of: error)) (mode: \(label))", file: file, line: line)
             }
-            XCTAssertEqual(actual, out, file: file, line: line)
-        } catch {
-            guard let errorType = errorType else {
-                XCTFail("unexpected error: \(error)", file: file, line: line)
-                return
-            }
-            XCTAssertTrue(type(of: error) == errorType, "expected: \(errorType), got: \(type(of: error))", file: file, line: line)
         }
     }
 
     private func t2(in input: [AnyCodable: AnyCodable], file: StaticString = #filePath, line: UInt = #line) throws {
         let data = try encoder.encode(input)
-        let out = try decoder.decode([AnyCodable: AnyCodable].self, from: data)
-        XCTAssertEqual(out, input, file: file, line: line)
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            let out = try decoder.decode([AnyCodable: AnyCodable].self, from: data)
+            XCTAssertEqual(out, input, "mode: \(label)", file: file, line: line)
+        }
     }
 
     func testDecode() {
@@ -145,29 +156,38 @@ final class DecodeTests: XCTestCase {
     }
 
     func testDecodeFloatSpecials() throws {
-        XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cb7ff0000000000000")), .infinity)
-        XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cbfff0000000000000")), -.infinity)
-        XCTAssertTrue(try decoder.decode(Double.self, from: Data(hex: "cb7ff8000000000000")).isNaN)
-        XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "ca7f800000")), .infinity)
-        XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "caff800000")), -.infinity)
-        XCTAssertTrue(try decoder.decode(Float.self, from: Data(hex: "ca7fc00000")).isNaN)
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cb7ff0000000000000")), .infinity, "mode: \(label)")
+            XCTAssertEqual(try decoder.decode(Double.self, from: Data(hex: "cbfff0000000000000")), -.infinity, "mode: \(label)")
+            XCTAssertTrue(try decoder.decode(Double.self, from: Data(hex: "cb7ff8000000000000")).isNaN, "mode: \(label)")
+            XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "ca7f800000")), .infinity, "mode: \(label)")
+            XCTAssertEqual(try decoder.decode(Float.self, from: Data(hex: "caff800000")), -.infinity, "mode: \(label)")
+            XCTAssertTrue(try decoder.decode(Float.self, from: Data(hex: "ca7fc00000")).isNaN, "mode: \(label)")
+        }
     }
 
     func testEncodeFloatSpecials() throws {
-        for v: Double in [.infinity, -.infinity] {
-            XCTAssertEqual(try decoder.decode(Double.self, from: encoder.encode(v)), v)
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            for v: Double in [.infinity, -.infinity] {
+                XCTAssertEqual(try decoder.decode(Double.self, from: encoder.encode(v)), v, "mode: \(label)")
+            }
+            XCTAssertTrue(try decoder.decode(Double.self, from: encoder.encode(Double.nan)).isNaN, "mode: \(label)")
+            for v: Float in [.infinity, -.infinity] {
+                XCTAssertEqual(try decoder.decode(Float.self, from: encoder.encode(v)), v, "mode: \(label)")
+            }
+            XCTAssertTrue(try decoder.decode(Float.self, from: encoder.encode(Float.nan)).isNaN, "mode: \(label)")
         }
-        XCTAssertTrue(try decoder.decode(Double.self, from: encoder.encode(Double.nan)).isNaN)
-        for v: Float in [.infinity, -.infinity] {
-            XCTAssertEqual(try decoder.decode(Float.self, from: encoder.encode(v)), v)
-        }
-        XCTAssertTrue(try decoder.decode(Float.self, from: encoder.encode(Float.nan)).isNaN)
     }
 
     func testEncode() throws {
         let data = try encoder.encode(All.value)
-        let actual = try decoder.decode(All.self, from: data)
-        XCTAssertEqual(actual, All.value)
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            let actual = try decoder.decode(All.self, from: data)
+            XCTAssertEqual(actual, All.value, "mode: \(label)")
+        }
     }
 
     func testAnyCodable() throws {
@@ -185,9 +205,12 @@ final class DecodeTests: XCTestCase {
     func testMsgPackKeyedDecodingContainerAllKeys() throws {
         let input: [AnyCodable: AnyCodable] = [.init(3.14159265359): .init("pi"), .init("key"): .init(0x34)]
         let data = try encoder.encode(input)
-        let dict = try decoder.decode(DictionaryWrapper.self, from: data).dict
-        XCTAssertEqual(dict.count, 1)
-        XCTAssertEqual(dict["key"], AnyCodable(0x34))
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            let dict = try decoder.decode(DictionaryWrapper.self, from: data).dict
+            XCTAssertEqual(dict.count, 1, "mode: \(label)")
+            XCTAssertEqual(dict["key"], AnyCodable(0x34), "mode: \(label)")
+        }
     }
 
     @available(macOS 15.0, iOS 18.0, tvOS 18.0, watchOS 11.0, visionOS 2.0, *)
@@ -204,14 +227,15 @@ final class DecodeTests: XCTestCase {
         let original = 30
         let data = try encoder.encode(original)
 
-        let decoder = MsgPackDecoder()
-        let decoded = try decoder.decode(
-            ConfiguredInt.self,
-            from: data,
-            configuration: TestConfig(multiplier: 3)
-        )
-
-        XCTAssertEqual(decoded, ConfiguredInt(value: 10))
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            let decoded = try decoder.decode(
+                ConfiguredInt.self,
+                from: data,
+                configuration: TestConfig(multiplier: 3)
+            )
+            XCTAssertEqual(decoded, ConfiguredInt(value: 10), "mode: \(label)")
+        }
     }
 
     @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
@@ -219,14 +243,15 @@ final class DecodeTests: XCTestCase {
         let encoder = MsgPackEncoder()
         let data = try encoder.encode(100)
 
-        let decoder = MsgPackDecoder()
-        let decoded = try decoder.decode(
-            ConfiguredInt.self,
-            from: data,
-            configuration: TestConfigProvider.self
-        )
-
-        XCTAssertEqual(decoded, ConfiguredInt(value: 50))
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            let decoded = try decoder.decode(
+                ConfiguredInt.self,
+                from: data,
+                configuration: TestConfigProvider.self
+            )
+            XCTAssertEqual(decoded, ConfiguredInt(value: 50), "mode: \(label)")
+        }
     }
 }
 
