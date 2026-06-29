@@ -9,11 +9,52 @@ private protocol _MsgPackArrayDecodableMarker {}
 extension Array: _MsgPackArrayDecodableMarker where Element: Decodable {}
 
 open class MsgPackDecoder {
-    public init() {}
+    /// Options that control how ``MsgPackDecoder`` materialises the
+    /// root MessagePack value before handing it to the Codable
+    /// machinery. Bit positions are stable; new options are added
+    /// only by appending higher bits.
+    public struct DecodingOption: OptionSet, Sendable {
+        public let rawValue: UInt
+        public init(rawValue: UInt) { self.rawValue = rawValue }
+
+        /// Skip eager construction of the full `MsgPackValue` tree.
+        /// Containers are recorded as cursors and materialised on
+        /// demand as the Codable path walks into them. Produces a
+        /// result bit-identical to the eager path.
+        ///
+        /// See the README "Performance" section for guidance on when
+        /// this helps and when the eager default is preferable.
+        ///
+        /// - Important: The lazy IR borrows the lifetime of the
+        ///   `Data` passed to ``decode(_:from:)``. Do not retain the
+        ///   decoder or container objects past the call — the cursors
+        ///   hold raw pointers that are only valid while the decode
+        ///   call is on the stack. ``MsgPackDecoder`` is not
+        ///   `Sendable`; do not share a single decoder across threads.
+        public static let lazyScan = DecodingOption(rawValue: 1 << 0)
+    }
+
+    let options: DecodingOption
+
+    public init() {
+        options = []
+    }
+
+    public init(options: DecodingOption) {
+        self.options = options
+    }
+
+    private func scanRoot(_ scanner: MsgPackScanner) -> MsgPackValue {
+        if options.contains(.lazyScan) {
+            return scanner.scanLazy()
+        }
+        return scanner.scan()
+    }
+
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         try data.withUnsafeBytes {
             let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
-            let value = scanner.scan()
+            let value = scanRoot(scanner)
             let decoder: _MsgPackDecoder = .init(from: value)
             do {
                 return try decoder.unwrap(as: T.self)
@@ -30,7 +71,7 @@ open class MsgPackDecoder {
     open func decode<T: DecodableWithConfiguration>(_ type: T.Type, from data: Data, configuration: T.DecodingConfiguration) throws -> T {
         try data.withUnsafeBytes {
             let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
-            let value = scanner.scan()
+            let value = scanRoot(scanner)
             let decoder: _MsgPackDecoder = .init(from: value)
             do {
                 return try decoder.unwrap(as: T.self, configuration: configuration)
