@@ -126,6 +126,10 @@ final class DecodeTests: XCTestCase {
         t(in: "9282a15812a1593482a15812a15934", type: Pairs.self, out: Pairs(a: [.init(X: 0x12, Y: 0x34), .init(X: 0x12, Y: 0x34)]))
         // ext32 (0xC9): 4-byte length header carrying a 1-byte payload
         t(in: "c900000001013d", type: Opacity.self, out: Opacity(a: 0x3D))
+        // 32-bit container headers (array32 / map32 / str32) with small bodies
+        t(in: "dd00000003010203", type: [UInt8].self, out: [0x01, 0x02, 0x03])
+        t(in: "df00000001a17801", type: [String: UInt8].self, out: ["x": 0x01])
+        t(in: "db00000003616263", type: String.self, out: "abc")
         // typeMismatch
         t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
         t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
