@@ -124,6 +124,8 @@ final class DecodeTests: XCTestCase {
         t(in: "92921234925678", type: UIS2.self, out: UIS2(a: [[0x12, 0x34], [0x56, 0x78]]))
         // nestedContainer
         t(in: "9282a15812a1593482a15812a15934", type: Pairs.self, out: Pairs(a: [.init(X: 0x12, Y: 0x34), .init(X: 0x12, Y: 0x34)]))
+        // ext32 (0xC9): 4-byte length header carrying a 1-byte payload
+        t(in: "c900000001013d", type: Opacity.self, out: Opacity(a: 0x3D))
         // typeMismatch
         t(in: "c3", type: UInt.self, out: 1, errorType: DecodingError.self)
         t(in: "c3", type: Int.self, out: 1, errorType: DecodingError.self)
