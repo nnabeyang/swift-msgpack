@@ -85,6 +85,32 @@ print(any)
 // )
 ```
 
+## Performance
+
+`MsgPackDecoder` has an opt-in lazy mode that defers walking the contents of MessagePack arrays and maps until the Codable target asks for them. Pass `.lazyScan` when constructing the decoder:
+
+```swift
+let decoder = MsgPackDecoder(options: .lazyScan)
+let value = try decoder.decode(SparseStruct.self, from: largePayload)
+```
+
+The result is bit-identical to the default eager mode; only the cost profile of `decode(_:from:)` changes.
+
+**When `.lazyScan` helps**
+
+- Decoding a small subset of fields from a large map. Picking 3 keys from a 1000-key payload measures roughly 91% lower wall clock and 99% fewer allocations than the eager path.
+- Sparse `struct` targets against dense maps scale similarly as the source grows (about 10% faster at size 10, around 90% at size 1000).
+
+**When the eager default is preferable**
+
+- Array payloads where every element is read. The per-element cursor allocation adds about 13% wall clock and 30% extra `malloc` calls on `[Item]` x 1000.
+- Fully materialised dictionaries (`[String: String]`), nested map-of-map round trips, and `AnyCodable` are within ±5% of eager — either mode is fine.
+
+**Safety**
+
+- The lazy IR borrows the lifetime of the `Data` passed to `decode(_:from:)`. Do not retain the decoder or container objects past the call — the cursors hold raw pointers that are only valid while the decode call is on the stack.
+- `MsgPackDecoder` is not `Sendable`; do not share a single decoder across threads.
+
 ## Installation
 
 ### Swift Package Manager
