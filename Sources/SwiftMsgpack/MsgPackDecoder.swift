@@ -255,6 +255,15 @@ private extension _MsgPackDecoder {
 
 extension _MsgPackDecoder {
     func unwrap<T: Decodable>(as type: T.Type) throws -> T {
+        if type == MsgPackRawValue.self {
+            guard let d = rawData else {
+                throw DecodingError.dataCorrupted(.init(
+                    codingPath: codingPath,
+                    debugDescription: "MsgPackRawValue requires MsgPackDecoder."
+                ))
+            }
+            return MsgPackRawValue(d) as! T
+        }
         if type == Data.self || type == NSData.self {
             return try unwrapData() as! T
         }
