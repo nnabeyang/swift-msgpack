@@ -261,14 +261,20 @@ enum MsgPackOpCode {
 }
 
 class MsgPackScanner {
+    private let source: Data
     private let start: UnsafeRawPointer
     private var ptr: UnsafeRawPointer
     private let count: Int
 
-    init(ptr: UnsafeRawPointer, count: Int) {
+    init(source: Data, ptr: UnsafeRawPointer, count: Int) {
+        self.source = source
         start = ptr
         self.ptr = ptr
         self.count = count
+    }
+
+    private func slice(from begin: Int, to end: Int) -> Data {
+        source.subdata(in: (source.startIndex + begin) ..< (source.startIndex + end))
     }
 
     private func advanced(by n: Int) {
@@ -310,6 +316,16 @@ class MsgPackScanner {
     }
 
     func scan() -> MsgPackValue {
+        let begin = start.distance(to: ptr)
+        let inner = scanInner()
+        let end = start.distance(to: ptr)
+        if end <= begin {
+            return inner
+        }
+        return .raw(slice(from: begin, to: end), inner)
+    }
+
+    private func scanInner() -> MsgPackValue {
         switch readOpCode() {
         case .end, .neverUsed:
             .none
@@ -438,6 +454,16 @@ extension MsgPackScanner {
     }
 
     func scanLazy() -> MsgPackValue {
+        let begin = start.distance(to: ptr)
+        let inner = scanLazyInner()
+        let end = start.distance(to: ptr)
+        if end <= begin {
+            return inner
+        }
+        return .raw(slice(from: begin, to: end), inner)
+    }
+
+    func scanLazyInner() -> MsgPackValue {
         switch readOpCode() {
         case .end, .neverUsed:
             return .none
