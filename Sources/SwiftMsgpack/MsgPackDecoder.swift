@@ -9,11 +9,52 @@ private protocol _MsgPackArrayDecodableMarker {}
 extension Array: _MsgPackArrayDecodableMarker where Element: Decodable {}
 
 open class MsgPackDecoder {
-    public init() {}
+    /// Options that control how ``MsgPackDecoder`` materialises the
+    /// root MessagePack value before handing it to the Codable
+    /// machinery. Bit positions are stable; new options are added
+    /// only by appending higher bits.
+    public struct DecodingOption: OptionSet, Sendable {
+        public let rawValue: UInt
+        public init(rawValue: UInt) { self.rawValue = rawValue }
+
+        /// Skip eager construction of the full `MsgPackValue` tree.
+        /// Containers are recorded as cursors and materialised on
+        /// demand as the Codable path walks into them. Produces a
+        /// result bit-identical to the eager path.
+        ///
+        /// See the README "Performance" section for guidance on when
+        /// this helps and when the eager default is preferable.
+        ///
+        /// - Important: The lazy IR borrows the lifetime of the
+        ///   `Data` passed to ``decode(_:from:)``. Do not retain the
+        ///   decoder or container objects past the call — the cursors
+        ///   hold raw pointers that are only valid while the decode
+        ///   call is on the stack. ``MsgPackDecoder`` is not
+        ///   `Sendable`; do not share a single decoder across threads.
+        public static let lazyScan = DecodingOption(rawValue: 1 << 0)
+    }
+
+    let options: DecodingOption
+
+    public init() {
+        options = []
+    }
+
+    public init(options: DecodingOption) {
+        self.options = options
+    }
+
+    private func scanRoot(_ scanner: MsgPackScanner) -> MsgPackValue {
+        if options.contains(.lazyScan) {
+            return scanner.scanLazy()
+        }
+        return scanner.scan()
+    }
+
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         try data.withUnsafeBytes {
             let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
-            let value = scanner.scan()
+            let value = scanRoot(scanner)
             let decoder: _MsgPackDecoder = .init(from: value)
             do {
                 return try decoder.unwrap(as: T.self)
@@ -30,7 +71,7 @@ open class MsgPackDecoder {
     open func decode<T: DecodableWithConfiguration>(_ type: T.Type, from data: Data, configuration: T.DecodingConfiguration) throws -> T {
         try data.withUnsafeBytes {
             let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
-            let value = scanner.scan()
+            let value = scanRoot(scanner)
             let decoder: _MsgPackDecoder = .init(from: value)
             do {
                 return try decoder.unwrap(as: T.self, configuration: configuration)
@@ -67,7 +108,9 @@ private class _MsgPackDecoder: Decoder {
     }
 
     func container<Key>(keyedBy _: Key.Type) throws -> KeyedDecodingContainer<Key> where Key: CodingKey {
-        guard case .map = value else {
+        switch value {
+        case .map, .lazyMap: break
+        default:
             throw DecodingError.typeMismatch([String: Any].self, DecodingError.Context(
                 codingPath: codingPath,
                 debugDescription: "Expected to decode \([String: Any].self) but found \(value.debugDataTypeDescription) instead."
@@ -78,7 +121,7 @@ private class _MsgPackDecoder: Decoder {
 
     func unkeyedContainer() throws -> UnkeyedDecodingContainer {
         switch value {
-        case .array, .map, .none: break
+        case .array, .map, .none, .lazyArray, .lazyMap: break
         default:
             throw DecodingError.typeMismatch([Any].self, DecodingError.Context(
                 codingPath: codingPath,
@@ -250,7 +293,9 @@ extension _MsgPackDecoder {
         guard (T.self as? (_MsgPackDictionaryDecodableMarker & Decodable).Type) != nil else {
             preconditionFailure("Must only be called of T implements _MsgPackDictionaryDecodableMarker")
         }
-        guard case .map = value else {
+        switch value {
+        case .map, .lazyMap: break
+        default:
             throw DecodingError.typeMismatch(T.self, DecodingError.Context(
                 codingPath: codingPath,
                 debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
@@ -262,7 +307,9 @@ extension _MsgPackDecoder {
         guard (T.self as? (_MsgPackArrayDecodableMarker & Decodable).Type) != nil else {
             preconditionFailure("Must only be called of T implements _MsgPackArrayDecodableMarker")
         }
-        guard case .array = value else {
+        switch value {
+        case .array, .lazyArray: break
+        default:
             throw DecodingError.typeMismatch([MsgPackValue].self, DecodingError.Context(
                 codingPath: codingPath,
                 debugDescription: "Expected to decode \([MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
@@ -362,20 +409,43 @@ private struct _MsgPackSingleValueDecodingContainer: SingleValueDecodingContaine
 }
 
 private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer {
+    private enum Source {
+        case eager([MsgPackValue])
+        case lazy(LazyArrayCursor)
+
+        var count: Int {
+            switch self {
+            case let .eager(arr): return arr.count
+            case let .lazy(c): return c.count
+            }
+        }
+
+        func element(at index: Int) -> MsgPackValue {
+            switch self {
+            case let .eager(arr): return arr[index]
+            case let .lazy(c): return c.element(at: index)
+            }
+        }
+    }
+
     private let decoder: _MsgPackDecoder
     private(set) var codingPath: [CodingKey]
     public private(set) var currentIndex: Int
-    private var container: [MsgPackValue]
+    private var source: Source
 
     init(referencing decoder: _MsgPackDecoder, container: MsgPackValue) {
         self.decoder = decoder
         codingPath = decoder.codingPath
         currentIndex = 0
-        self.container = container.asArray()
+        if case let .lazyArray(c) = container {
+            source = .lazy(c)
+        } else {
+            source = .eager(container.asArray())
+        }
     }
 
     var count: Int? {
-        container.count
+        source.count
     }
 
     var isAtEnd: Bool {
@@ -523,7 +593,7 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
                       underlyingError: nil)
             )
         }
-        return container[currentIndex]
+        return source.element(at: currentIndex)
     }
 
     @inline(__always)
@@ -564,9 +634,35 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
 private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContainerProtocol {
     typealias Key = K
 
+    private enum Source {
+        case eager([String: MsgPackValue])
+        case lazy(LazyMapCursor)
+
+        func value(forStringKey key: String) -> MsgPackValue? {
+            switch self {
+            case let .eager(d): return d[key]
+            case let .lazy(c): return c.value(forStringKey: key)
+            }
+        }
+
+        func allStringKeys() -> [String] {
+            switch self {
+            case let .eager(d): return Array(d.keys)
+            case let .lazy(c): return c.allStringKeys()
+            }
+        }
+
+        func contains(stringKey key: String) -> Bool {
+            switch self {
+            case let .eager(d): return d[key] != nil
+            case let .lazy(c): return c.contains(stringKey: key)
+            }
+        }
+    }
+
     private let decoder: _MsgPackDecoder
     private(set) var codingPath: [CodingKey]
-    private var container: [String: MsgPackValue]
+    private var source: Source
 
     static func asDictionary(value msgPackValue: MsgPackValue, using decoder: _MsgPackDecoder) -> [String: MsgPackValue] {
         var result = [String: MsgPackValue]()
@@ -584,18 +680,20 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     init(referencing decoder: _MsgPackDecoder, container: MsgPackValue) {
         self.decoder = decoder
-        self.container = Self.asDictionary(value: container, using: decoder)
+        if case let .lazyMap(c) = container {
+            source = .lazy(c)
+        } else {
+            source = .eager(Self.asDictionary(value: container, using: decoder))
+        }
         codingPath = decoder.codingPath
     }
 
     var allKeys: [Key] {
-        container.keys.compactMap {
-            Key(stringValue: $0)
-        }
+        source.allStringKeys().compactMap { Key(stringValue: $0) }
     }
 
     func contains(_ key: Key) -> Bool {
-        container[key.stringValue] != nil
+        source.contains(stringKey: key.stringValue)
     }
 
     func decodeNil(forKey key: Key) throws -> Bool {
@@ -711,7 +809,7 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
 
     @inline(__always)
     private func getValue<LocalKey: CodingKey>(forKey key: LocalKey) throws -> MsgPackValue {
-        guard let value = container[key.stringValue] else {
+        guard let value = source.value(forStringKey: key.stringValue) else {
             let context = DecodingError.Context(codingPath: codingPath, debugDescription: "No value assosiated with key \(key) (\"\(key.stringValue)\"")
             throw DecodingError.keyNotFound(key, context)
         }

@@ -45,6 +45,8 @@ indirect enum MsgPackValue {
     case ext(Int8, Data)
     case array([MsgPackValue])
     case map([MsgPackValue])
+    case lazyArray(LazyArrayCursor)
+    case lazyMap(LazyMapCursor)
 }
 
 extension MsgPackValue {
@@ -56,6 +58,10 @@ extension MsgPackValue {
             return [self]
         case let .array(a), let .map(a):
             return a
+        case let .lazyArray(c):
+            return c.elements()
+        case let .lazyMap(c):
+            return c.entries()
         }
     }
 
@@ -86,6 +92,27 @@ extension MsgPackValue {
                 d.append((key, value))
             }
             return d
+        case let .lazyArray(c):
+            let a = c.elements()
+            if a.count % 2 != 0 {
+                return []
+            }
+            let n = a.count / 2
+            var d = [(MsgPackValue, MsgPackValue)]()
+            d.reserveCapacity(n * 2)
+            for i in 0 ..< n {
+                d.append((a[i * 2], a[i * 2 + 1]))
+            }
+            return d
+        case let .lazyMap(c):
+            let a = c.entries()
+            let n = a.count / 2
+            var d = [(MsgPackValue, MsgPackValue)]()
+            d.reserveCapacity(n * 2)
+            for i in 0 ..< n {
+                d.append((a[i * 2], a[i * 2 + 1]))
+            }
+            return d
         }
     }
 }
@@ -99,9 +126,9 @@ extension MsgPackValue {
             return v.debugDataTypeDescription
         case .ext:
             return "a extension"
-        case .array:
+        case .array, .lazyArray:
             return "an array"
-        case .map:
+        case .map, .lazyMap:
             return "a map"
         }
     }
@@ -377,5 +404,78 @@ class MsgPackScanner {
 
     private func readOpCode() -> MsgPackOpCode {
         !isAtEnd ? MsgPackOpCode(ch: readUInt8()) : .end
+    }
+}
+
+extension MsgPackScanner {
+    var currentPointer: UnsafeRawPointer { ptr }
+
+    func seek(to p: UnsafeRawPointer) {
+        ptr = p
+    }
+
+    func scanLazy() -> MsgPackValue {
+        switch readOpCode() {
+        case .end, .neverUsed:
+            return .none
+        case let .uint(c):
+            return scanUInt(c)
+        case let .int(c):
+            return scanInt(c)
+        case let .str(c):
+            return scanString(c)
+        case let .bin(c):
+            return scanBinary(c)
+        case let .ext(c):
+            return scanExtension(c)
+        case let .array(c):
+            let n = getLength(c)
+            let start = ptr
+            for _ in 0 ..< n {
+                skipOne()
+            }
+            return .lazyArray(LazyArrayCursor(scanner: self, start: start, count: n))
+        case let .map(c):
+            let n = getLength(c)
+            let start = ptr
+            for _ in 0 ..< n {
+                skipOne()
+                skipOne()
+            }
+            return .lazyMap(LazyMapCursor(scanner: self, start: start, pairCount: n))
+        case let .simple(c):
+            return scanSimple(c)
+        }
+    }
+
+    func skipOne() {
+        switch readOpCode() {
+        case .end, .neverUsed:
+            return
+        case let .uint(c):
+            _ = _scanUInt(c)
+        case let .int(c):
+            _ = scanInt(c)
+        case let .str(c):
+            advanced(by: getLength(c))
+        case let .bin(c):
+            advanced(by: getLength(c))
+        case let .ext(c):
+            let n = getLength(c)
+            advanced(by: 1 + n)
+        case let .array(c):
+            let n = getLength(c)
+            for _ in 0 ..< n {
+                skipOne()
+            }
+        case let .map(c):
+            let n = getLength(c)
+            for _ in 0 ..< n {
+                skipOne()
+                skipOne()
+            }
+        case let .simple(c):
+            _ = scanSimple(c)
+        }
     }
 }
