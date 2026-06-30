@@ -47,11 +47,30 @@ indirect enum MsgPackValue {
     case map([MsgPackValue])
     case lazyArray(LazyArrayCursor)
     case lazyMap(LazyMapCursor)
+    case raw(Data, MsgPackValue)
+}
+
+extension MsgPackValue {
+    var stripped: MsgPackValue {
+        if case let .raw(_, inner) = self {
+            return inner.stripped
+        }
+        return self
+    }
+
+    var rawData: Data? {
+        if case let .raw(d, _) = self {
+            return d
+        }
+        return nil
+    }
 }
 
 extension MsgPackValue {
     func asArray() -> [MsgPackValue] {
         switch self {
+        case let .raw(_, inner):
+            return inner.asArray()
         case .none:
             return []
         case .literal, .ext:
@@ -67,6 +86,8 @@ extension MsgPackValue {
 
     func asDictionary() -> [(MsgPackValue, MsgPackValue)] {
         switch self {
+        case let .raw(_, inner):
+            return inner.asDictionary()
         case .none, .literal, .ext:
             return []
         case let .array(a):
@@ -120,6 +141,8 @@ extension MsgPackValue {
 extension MsgPackValue {
     var debugDataTypeDescription: String {
         switch self {
+        case let .raw(_, inner):
+            return inner.debugDataTypeDescription
         case .none:
             return "none"
         case let .literal(v):
