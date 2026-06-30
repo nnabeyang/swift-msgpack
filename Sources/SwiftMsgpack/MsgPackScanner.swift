@@ -47,11 +47,30 @@ indirect enum MsgPackValue {
     case map([MsgPackValue])
     case lazyArray(LazyArrayCursor)
     case lazyMap(LazyMapCursor)
+    case raw(Data, MsgPackValue)
+}
+
+extension MsgPackValue {
+    var stripped: MsgPackValue {
+        if case let .raw(_, inner) = self {
+            return inner.stripped
+        }
+        return self
+    }
+
+    var rawData: Data? {
+        if case let .raw(d, _) = self {
+            return d
+        }
+        return nil
+    }
 }
 
 extension MsgPackValue {
     func asArray() -> [MsgPackValue] {
         switch self {
+        case let .raw(_, inner):
+            return inner.asArray()
         case .none:
             return []
         case .literal, .ext:
@@ -67,6 +86,8 @@ extension MsgPackValue {
 
     func asDictionary() -> [(MsgPackValue, MsgPackValue)] {
         switch self {
+        case let .raw(_, inner):
+            return inner.asDictionary()
         case .none, .literal, .ext:
             return []
         case let .array(a):
@@ -120,6 +141,8 @@ extension MsgPackValue {
 extension MsgPackValue {
     var debugDataTypeDescription: String {
         switch self {
+        case let .raw(_, inner):
+            return inner.debugDataTypeDescription
         case .none:
             return "none"
         case let .literal(v):
@@ -238,14 +261,20 @@ enum MsgPackOpCode {
 }
 
 class MsgPackScanner {
+    private let source: Data
     private let start: UnsafeRawPointer
     private var ptr: UnsafeRawPointer
     private let count: Int
 
-    init(ptr: UnsafeRawPointer, count: Int) {
+    init(source: Data, ptr: UnsafeRawPointer, count: Int) {
+        self.source = source
         start = ptr
         self.ptr = ptr
         self.count = count
+    }
+
+    private func slice(from begin: Int, to end: Int) -> Data {
+        source.subdata(in: (source.startIndex + begin) ..< (source.startIndex + end))
     }
 
     private func advanced(by n: Int) {
@@ -287,6 +316,16 @@ class MsgPackScanner {
     }
 
     func scan() -> MsgPackValue {
+        let begin = start.distance(to: ptr)
+        let inner = scanInner()
+        let end = start.distance(to: ptr)
+        if end <= begin {
+            return inner
+        }
+        return .raw(slice(from: begin, to: end), inner)
+    }
+
+    private func scanInner() -> MsgPackValue {
         switch readOpCode() {
         case .end, .neverUsed:
             .none
@@ -415,6 +454,16 @@ extension MsgPackScanner {
     }
 
     func scanLazy() -> MsgPackValue {
+        let begin = start.distance(to: ptr)
+        let inner = scanLazyInner()
+        let end = start.distance(to: ptr)
+        if end <= begin {
+            return inner
+        }
+        return .raw(slice(from: begin, to: end), inner)
+    }
+
+    func scanLazyInner() -> MsgPackValue {
         switch readOpCode() {
         case .end, .neverUsed:
             return .none

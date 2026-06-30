@@ -455,6 +455,8 @@ private extension _SpecialTreatmentEncoder {
     func wrapEncodable<E: Encodable>(_ encodable: E, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue? {
         let encoder = getEncoder(for: additionalKey)
         switch encodable {
+        case let raw as MsgPackRawValue:
+            return try wrapMsgPackRawValue(raw, for: additionalKey)
         case let data as Data:
             return try wrapData(data, for: additionalKey)
         case let msgPack as MsgPackEncodable:
@@ -478,6 +480,8 @@ private extension _SpecialTreatmentEncoder {
     func wrapEncodable<E: EncodableWithConfiguration>(_ encodable: E, configuration: E.EncodingConfiguration, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue? {
         let encoder = getEncoder(for: additionalKey)
         switch encodable {
+        case let raw as MsgPackRawValue:
+            return try wrapMsgPackRawValue(raw, for: additionalKey)
         case let data as Data:
             return try wrapData(data, for: additionalKey)
         case let msgPack as MsgPackEncodable:
@@ -496,6 +500,22 @@ private extension _SpecialTreatmentEncoder {
             }
         }
         return encoder.value
+    }
+
+    func wrapMsgPackRawValue(_ raw: MsgPackRawValue, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
+        guard !raw.data.isEmpty else {
+            let path: [CodingKey]
+            if let additionalKey = additionalKey {
+                path = codingPath + [additionalKey]
+            } else {
+                path = codingPath
+            }
+            throw EncodingError.invalidValue(raw, .init(
+                codingPath: path,
+                debugDescription: "MsgPackRawValue has empty data."
+            ))
+        }
+        return .literal([UInt8](raw.data))
     }
 
     func wrapData(_ data: Data, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {

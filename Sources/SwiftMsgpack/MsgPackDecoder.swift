@@ -53,7 +53,7 @@ open class MsgPackDecoder {
 
     open func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
         try data.withUnsafeBytes {
-            let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
+            let scanner: MsgPackScanner = .init(source: data, ptr: $0.baseAddress!, count: $0.count)
             let value = scanRoot(scanner)
             let decoder: _MsgPackDecoder = .init(from: value)
             do {
@@ -70,7 +70,7 @@ open class MsgPackDecoder {
     @available(macOS 14, iOS 17, tvOS 17, watchOS 10, *)
     open func decode<T: DecodableWithConfiguration>(_ type: T.Type, from data: Data, configuration: T.DecodingConfiguration) throws -> T {
         try data.withUnsafeBytes {
-            let scanner: MsgPackScanner = .init(ptr: $0.baseAddress!, count: $0.count)
+            let scanner: MsgPackScanner = .init(source: data, ptr: $0.baseAddress!, count: $0.count)
             let value = scanRoot(scanner)
             let decoder: _MsgPackDecoder = .init(from: value)
             do {
@@ -100,10 +100,12 @@ public typealias MsgPackCodable = MsgPackDecodable & MsgPackEncodable
 private class _MsgPackDecoder: Decoder {
     var codingPath: [CodingKey]
     var value: MsgPackValue
+    let rawData: Data?
     var userInfo: [CodingUserInfoKey: Any] = [:]
 
     init(from value: MsgPackValue, at codingPath: [CodingKey] = []) {
-        self.value = value
+        rawData = value.rawData
+        self.value = value.stripped
         self.codingPath = codingPath
     }
 
@@ -139,6 +141,7 @@ private class _MsgPackDecoder: Decoder {
 
 private extension _MsgPackDecoder {
     func unbox(_ value: MsgPackValue, as type: Bool.Type) throws -> Bool? {
+        let value = value.stripped
         if case let .literal(value) = value {
             switch value {
             case let .bool(v): return v
@@ -155,6 +158,7 @@ private extension _MsgPackDecoder {
     }
 
     func unbox(_ value: MsgPackValue, as type: String.Type) throws -> String? {
+        let value = value.stripped
         if case let .literal(value) = value {
             switch value {
             case let .str(v):
@@ -173,6 +177,7 @@ private extension _MsgPackDecoder {
     }
 
     func unboxFloat32(_ value: MsgPackValue) throws -> Float? {
+        let value = value.stripped
         if case let .literal(f) = value {
             switch f {
             case let .float32(v):
@@ -193,6 +198,7 @@ private extension _MsgPackDecoder {
     }
 
     func unboxFloat64(_ value: MsgPackValue) throws -> Double? {
+        let value = value.stripped
         if case let .literal(f) = value {
             switch f {
             case let .float32(v):
@@ -213,6 +219,7 @@ private extension _MsgPackDecoder {
     }
 
     func unboxInt<T: SignedInteger & FixedWidthInteger>(_ value: MsgPackValue) throws -> T {
+        let value = value.stripped
         if case let .literal(vv) = value {
             switch vv {
             case let .uint(v), let .int(v):
@@ -229,6 +236,7 @@ private extension _MsgPackDecoder {
     }
 
     func unboxUInt<T: UnsignedInteger & FixedWidthInteger>(_ value: MsgPackValue) throws -> T {
+        let value = value.stripped
         if case let .literal(literal) = value {
             switch literal {
             case let .uint(v):
@@ -247,6 +255,15 @@ private extension _MsgPackDecoder {
 
 extension _MsgPackDecoder {
     func unwrap<T: Decodable>(as type: T.Type) throws -> T {
+        if type == MsgPackRawValue.self {
+            guard let d = rawData else {
+                throw DecodingError.dataCorrupted(.init(
+                    codingPath: codingPath,
+                    debugDescription: "MsgPackRawValue requires MsgPackDecoder."
+                ))
+            }
+            return MsgPackRawValue(d) as! T
+        }
         if type == Data.self || type == NSData.self {
             return try unwrapData() as! T
         }
@@ -453,7 +470,7 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
     }
 
     mutating func decodeNil() throws -> Bool {
-        let value = try getNextValue(ofType: Never.self)
+        let value = try getNextValue(ofType: Never.self).stripped
         if case .literal(.nil) = value {
             currentIndex += 1
             return true
@@ -697,7 +714,7 @@ private struct MsgPackKeyedDecodingContainer<K: CodingKey>: KeyedDecodingContain
     }
 
     func decodeNil(forKey key: Key) throws -> Bool {
-        let value = try getValue(forKey: key)
+        let value = try getValue(forKey: key).stripped
         if case .literal(.nil) = value {
             return true
         } else {
