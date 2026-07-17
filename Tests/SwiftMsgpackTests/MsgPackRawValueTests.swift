@@ -37,6 +37,24 @@ final class MsgPackRawValueTests: XCTestCase {
         }
     }
 
+    func testDecodePayloadInEnvelopeForIntWithConfig() throws {
+        let bytes = Data(hex: "82a46b696e64a3666f6fa77061796c6f61642a")
+        try bothModes { decoder, mode in
+            let env = try decoder.decode(Envelope.self, from: bytes, configuration: ())
+            XCTAssertEqual(env.kind, "foo", "mode: \(mode)")
+            XCTAssertEqual(env.payload.data, Data([0x2A]), "mode: \(mode)")
+        }
+    }
+
+    func testDecodePayloadInEnvelopeViaSuperDecoder() throws {
+        let bytes = Data(hex: "82a46b696e64a3666f6fa77061796c6f61642a")
+        try bothModes { decoder, mode in
+            let env = try decoder.decode(SuperDecoderEnvelope.self, from: bytes)
+            XCTAssertEqual(env.kind, "foo", "mode: \(mode)")
+            XCTAssertEqual(env.payload.data, Data([0x2A]), "mode: \(mode)")
+        }
+    }
+
     func testDecodePayloadInEnvelopeForString() throws {
         let payloadStr = try encoder.encode("hello")
         let bytes = try encoder.encode(["kind": "s", "payload": "hello"])
@@ -99,6 +117,39 @@ final class MsgPackRawValueTests: XCTestCase {
         }
     }
 
+    // Foundation's DecodableWithConfiguration conformances for Array/Optional call the
+    // element's init directly as `T(from: superDecoder(), configuration:)`, bypassing the
+    // special casing in _MsgPackDecoder.unwrap(as:). Verifies that init(from:) itself can
+    // handle a _MsgPackDecoder.
+    func testDecodeArrayOfRawValuesWithConfig() throws {
+        let bytes = Data(hex: "93c3c0a3666f6f")
+        try bothModes { decoder, mode in
+            let arr = try decoder.decode([MsgPackRawValue].self, from: bytes, configuration: ())
+            XCTAssertEqual(arr.count, 3, "mode: \(mode)")
+            XCTAssertEqual(arr[0].data, Data([0xC3]), "mode: \(mode)")
+            XCTAssertEqual(arr[1].data, Data([0xC0]), "mode: \(mode)")
+            XCTAssertEqual(arr[2].data, Data([0xA3, 0x66, 0x6F, 0x6F]), "mode: \(mode)")
+        }
+    }
+
+    func testDecodeOptionalArrayOfRawValuesWithConfig() throws {
+        let bytes = Data(hex: "93c3c0a3666f6f")
+        try bothModes { decoder, mode in
+            let arr = try decoder.decode([MsgPackRawValue]?.self, from: bytes, configuration: ())
+            XCTAssertEqual(arr?.count, 3, "mode: \(mode)")
+            XCTAssertEqual(arr?[0].data, Data([0xC3]), "mode: \(mode)")
+        }
+    }
+
+    func testDecodeWithForeignDecoderFails() {
+        XCTAssertThrowsError(try JSONDecoder().decode(MsgPackRawValue.self, from: Data("42".utf8))) { error in
+            guard case DecodingError.dataCorrupted = error else {
+                XCTFail("expected DecodingError.dataCorrupted, got \(error)")
+                return
+            }
+        }
+    }
+
     // MARK: - Encoding
 
     func testEncodeTopLevel() throws {
@@ -131,6 +182,37 @@ final class MsgPackRawValueTests: XCTestCase {
         }
     }
 
+    // Encoding through superEncoder() calls encode(to:) directly, bypassing the special
+    // casing in wrapEncodable. Verifies that encode(to:) itself can handle a _MsgPackEncoder.
+    func testEncodeViaSuperEncoder() throws {
+        let payload = Data([0x2A])
+        let env = SuperEncoderEnvelope(kind: "foo", payload: MsgPackRawValue(payload))
+        let bytes = try encoder.encode(env)
+        let env2 = try eager.decode(Envelope.self, from: bytes)
+        XCTAssertEqual(env2.kind, "foo")
+        XCTAssertEqual(env2.payload.data, payload)
+    }
+
+    func testEncodeEmptyDataViaSuperEncoderRejected() {
+        let env = SuperEncoderEnvelope(kind: "foo", payload: MsgPackRawValue(Data()))
+        XCTAssertThrowsError(try encoder.encode(env)) { error in
+            guard case EncodingError.invalidValue = error else {
+                XCTFail("expected EncodingError.invalidValue, got \(error)")
+                return
+            }
+        }
+    }
+
+    func testEncodeWithForeignEncoderFails() {
+        let env = EnvelopeOf(kind: "foo", payload: MsgPackRawValue(Data([0x2A])))
+        XCTAssertThrowsError(try JSONEncoder().encode(env)) { error in
+            guard case EncodingError.invalidValue = error else {
+                XCTFail("expected EncodingError.invalidValue, got \(error)")
+                return
+            }
+        }
+    }
+
     // MARK: - Round trip
 
     func testRoundTripInjectedPayload() throws {
@@ -148,9 +230,56 @@ final class MsgPackRawValueTests: XCTestCase {
     }
 }
 
-private struct Envelope: Decodable, Equatable {
+private struct Envelope: Decodable, DecodableWithConfiguration, Equatable {
+    typealias DecodingConfiguration = Void
     let kind: String
     let payload: MsgPackRawValue
+
+    init(from decoder: any Decoder, configuration _: DecodingConfiguration) throws {
+        try self.init(from: decoder)
+    }
+}
+
+// Conformance added in the test target to reach Foundation's Array/Optional
+// DecodableWithConfiguration conformances, which call init(from:) on each element directly.
+extension MsgPackRawValue: DecodableWithConfiguration {
+    public typealias DecodingConfiguration = Void
+
+    public init(from decoder: any Decoder, configuration _: Void) throws {
+        try self.init(from: decoder)
+    }
+}
+
+private struct SuperDecoderEnvelope: Decodable {
+    let kind: String
+    let payload: MsgPackRawValue
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case payload
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try container.decode(String.self, forKey: .kind)
+        payload = try MsgPackRawValue(from: container.superDecoder(forKey: .payload))
+    }
+}
+
+private struct SuperEncoderEnvelope: Encodable {
+    let kind: String
+    let payload: MsgPackRawValue
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case payload
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(kind, forKey: .kind)
+        try payload.encode(to: container.superEncoder(forKey: .payload))
+    }
 }
 
 private struct EnvelopeOf<Payload: Encodable>: Encodable {
