@@ -99,7 +99,7 @@ public protocol MsgPackEncodable: Encodable {
     var type: Int8 { get }
 }
 
-private class _MsgPackEncoder: Encoder {
+class _MsgPackEncoder: Encoder {
     public var codingPath: [CodingKey] = []
     public var userInfo: [CodingUserInfoKey: Any] = [:]
     fileprivate let options: MsgPackEncoder.OutputOption
@@ -154,9 +154,13 @@ extension _MsgPackEncoder: _SpecialTreatmentEncoder {
     var encoder: _MsgPackEncoder {
         self
     }
+
+    func fill(rawValue: MsgPackRawValue) throws {
+        singleValue = try wrapMsgPackRawValue(rawValue, for: nil)
+    }
 }
 
-private enum MsgPackFuture {
+enum MsgPackFuture {
     case value(MsgPackEncodedValue)
     case encoder(_MsgPackEncoder)
     case nestedArray(RefArray)

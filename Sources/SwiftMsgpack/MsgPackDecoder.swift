@@ -97,7 +97,7 @@ public protocol MsgPackDecodable: Decodable {
 
 public typealias MsgPackCodable = MsgPackDecodable & MsgPackEncodable
 
-private class _MsgPackDecoder: Decoder {
+class _MsgPackDecoder: Decoder {
     var codingPath: [CodingKey]
     var value: MsgPackValue
     let rawData: Data?
