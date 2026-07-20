@@ -12,9 +12,6 @@ let package = Package(
             targets: ["SwiftMsgpack"]
         ),
     ],
-    dependencies: [
-        .package(url: "https://github.com/nicklockwood/SwiftFormat", exact: "0.53.8")
-    ],
     targets: [
         .target(
             name: "SwiftMsgpack",
