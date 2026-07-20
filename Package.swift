@@ -10,7 +10,7 @@ let package = Package(
         .library(
             name: "SwiftMsgpack",
             targets: ["SwiftMsgpack"]
-        ),
+        )
     ],
     targets: [
         .target(
@@ -20,7 +20,7 @@ let package = Package(
         .executableTarget(
             name: "example",
             dependencies: [
-                "SwiftMsgpack",
+                "SwiftMsgpack"
             ],
             path: "Example"
         ),

@@ -113,10 +113,12 @@ class _MsgPackDecoder: Decoder {
         switch value {
         case .map, .lazyMap: break
         default:
-            throw DecodingError.typeMismatch([String: Any].self, DecodingError.Context(
-                codingPath: codingPath,
-                debugDescription: "Expected to decode \([String: Any].self) but found \(value.debugDataTypeDescription) instead."
-            ))
+            throw DecodingError.typeMismatch(
+                [String: Any].self,
+                DecodingError.Context(
+                    codingPath: codingPath,
+                    debugDescription: "Expected to decode \([String: Any].self) but found \(value.debugDataTypeDescription) instead."
+                ))
         }
         return KeyedDecodingContainer(MsgPackKeyedDecodingContainer<Key>(referencing: self, container: value))
     }
@@ -125,10 +127,12 @@ class _MsgPackDecoder: Decoder {
         switch value {
         case .array, .map, .none, .lazyArray, .lazyMap: break
         default:
-            throw DecodingError.typeMismatch([Any].self, DecodingError.Context(
-                codingPath: codingPath,
-                debugDescription: "Expected to decode \([Any].self) but found \(value.debugDataTypeDescription) instead."
-            ))
+            throw DecodingError.typeMismatch(
+                [Any].self,
+                DecodingError.Context(
+                    codingPath: codingPath,
+                    debugDescription: "Expected to decode \([Any].self) but found \(value.debugDataTypeDescription) instead."
+                ))
         }
 
         return MsgPackUnkeyedUnkeyedDecodingContainer(referencing: self, container: value)
@@ -151,10 +155,12 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(type, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
-        ))
+        throw DecodingError.typeMismatch(
+            type,
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     func unbox(_ value: MsgPackValue, as type: String.Type) throws -> String? {
@@ -170,10 +176,12 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(type, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
-        ))
+        throw DecodingError.typeMismatch(
+            type,
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \(type) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     func unboxFloat32(_ value: MsgPackValue) throws -> Float? {
@@ -191,10 +199,12 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(Float.self, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(Float.self) but found \(value.debugDataTypeDescription) instead."
-        ))
+        throw DecodingError.typeMismatch(
+            Float.self,
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \(Float.self) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     func unboxFloat64(_ value: MsgPackValue) throws -> Double? {
@@ -212,10 +222,12 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(Double.self, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(Double.self) but found \(value.debugDataTypeDescription) instead."
-        ))
+        throw DecodingError.typeMismatch(
+            Double.self,
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \(Double.self) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     func unboxInt<T: SignedInteger & FixedWidthInteger>(_ value: MsgPackValue) throws -> T {
@@ -229,10 +241,12 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(Int8.self, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
-        ))
+        throw DecodingError.typeMismatch(
+            Int8.self,
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 
     func unboxUInt<T: UnsignedInteger & FixedWidthInteger>(_ value: MsgPackValue) throws -> T {
@@ -246,10 +260,12 @@ private extension _MsgPackDecoder {
             }
         }
 
-        throw DecodingError.typeMismatch(UInt.self, DecodingError.Context(
-            codingPath: codingPath,
-            debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
-        ))
+        throw DecodingError.typeMismatch(
+            UInt.self,
+            DecodingError.Context(
+                codingPath: codingPath,
+                debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
+            ))
     }
 }
 
@@ -257,10 +273,11 @@ extension _MsgPackDecoder {
     func unwrap<T: Decodable>(as type: T.Type) throws -> T {
         if type == MsgPackRawValue.self {
             guard let d = rawData else {
-                throw DecodingError.dataCorrupted(.init(
-                    codingPath: codingPath,
-                    debugDescription: "MsgPackRawValue requires MsgPackDecoder."
-                ))
+                throw DecodingError.dataCorrupted(
+                    .init(
+                        codingPath: codingPath,
+                        debugDescription: "MsgPackRawValue requires MsgPackDecoder."
+                    ))
             }
             return MsgPackRawValue(d) as! T
         }
@@ -313,10 +330,12 @@ extension _MsgPackDecoder {
         switch value {
         case .map, .lazyMap: break
         default:
-            throw DecodingError.typeMismatch(T.self, DecodingError.Context(
-                codingPath: codingPath,
-                debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
-            ))
+            throw DecodingError.typeMismatch(
+                T.self,
+                DecodingError.Context(
+                    codingPath: codingPath,
+                    debugDescription: "Expected to decode \(T.self) but found \(value.debugDataTypeDescription) instead."
+                ))
         }
     }
 
@@ -327,10 +346,12 @@ extension _MsgPackDecoder {
         switch value {
         case .array, .lazyArray: break
         default:
-            throw DecodingError.typeMismatch([MsgPackValue].self, DecodingError.Context(
-                codingPath: codingPath,
-                debugDescription: "Expected to decode \([MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
-            ))
+            throw DecodingError.typeMismatch(
+                [MsgPackValue].self,
+                DecodingError.Context(
+                    codingPath: codingPath,
+                    debugDescription: "Expected to decode \([MsgPackValue].self) but found \(value.debugDataTypeDescription) instead."
+                ))
         }
     }
 }
@@ -605,9 +626,10 @@ private struct MsgPackUnkeyedUnkeyedDecodingContainer: UnkeyedDecodingContainer 
 
             throw DecodingError.valueNotFound(
                 T.self,
-                .init(codingPath: path,
-                      debugDescription: message,
-                      underlyingError: nil)
+                .init(
+                    codingPath: path,
+                    debugDescription: message,
+                    underlyingError: nil)
             )
         }
         return source.element(at: currentIndex)
