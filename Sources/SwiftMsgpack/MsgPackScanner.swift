@@ -39,38 +39,39 @@ struct MsgPackStringKey {
     let msgPackValue: MsgPackEncodedValue
 }
 
-indirect enum MsgPackValue {
-    case none
-    case literal(MsgPackValueLiteralType)
-    case ext(Int8, Data)
-    case array([MsgPackValue])
-    case map([MsgPackValue])
-    case lazyArray(LazyArrayCursor)
-    case lazyMap(LazyMapCursor)
-    case raw(Data, MsgPackValue)
+struct MsgPackValue {
+    let content: Content
+    let byteRange: Range<Int>?
+
+    enum Content {
+        case none
+        case literal(MsgPackValueLiteralType)
+        case ext(Int8, Data)
+        case array([MsgPackValue])
+        case map([MsgPackValue])
+        case lazyArray(LazyArrayCursor)
+        case lazyMap(LazyMapCursor)
+    }
+
+    init(content: Content, byteRange: Range<Int>? = nil) {
+        self.content = content
+        self.byteRange = byteRange
+    }
 }
 
 extension MsgPackValue {
-    var stripped: MsgPackValue {
-        if case let .raw(_, inner) = self {
-            return inner.stripped
-        }
-        return self
-    }
-
-    var rawData: Data? {
-        if case let .raw(d, _) = self {
-            return d
-        }
-        return nil
-    }
+    static var none: MsgPackValue { .init(content: .none) }
+    static func literal(_ lit: MsgPackValueLiteralType) -> MsgPackValue { .init(content: .literal(lit)) }
+    static func ext(_ type: Int8, _ data: Data) -> MsgPackValue { .init(content: .ext(type, data)) }
+    static func array(_ a: [MsgPackValue]) -> MsgPackValue { .init(content: .array(a)) }
+    static func map(_ a: [MsgPackValue]) -> MsgPackValue { .init(content: .map(a)) }
+    static func lazyArray(_ c: LazyArrayCursor) -> MsgPackValue { .init(content: .lazyArray(c)) }
+    static func lazyMap(_ c: LazyMapCursor) -> MsgPackValue { .init(content: .lazyMap(c)) }
 }
 
 extension MsgPackValue {
     func asArray() -> [MsgPackValue] {
-        switch self {
-        case let .raw(_, inner):
-            return inner.asArray()
+        switch content {
         case .none:
             return []
         case .literal, .ext:
@@ -85,9 +86,7 @@ extension MsgPackValue {
     }
 
     func asDictionary() -> [(MsgPackValue, MsgPackValue)] {
-        switch self {
-        case let .raw(_, inner):
-            return inner.asDictionary()
+        switch content {
         case .none, .literal, .ext:
             return []
         case let .array(a):
@@ -140,9 +139,7 @@ extension MsgPackValue {
 
 extension MsgPackValue {
     var debugDataTypeDescription: String {
-        switch self {
-        case let .raw(_, inner):
-            return inner.debugDataTypeDescription
+        switch content {
         case .none:
             return "none"
         case let .literal(v):
@@ -273,10 +270,6 @@ class MsgPackScanner {
         self.count = count
     }
 
-    private func slice(from begin: Int, to end: Int) -> Data {
-        source.subdata(in: (source.startIndex + begin) ..< (source.startIndex + end))
-    }
-
     private func advanced(by n: Int) {
         ptr = ptr.advanced(by: n)
     }
@@ -322,7 +315,7 @@ class MsgPackScanner {
         if end <= begin {
             return inner
         }
-        return .raw(slice(from: begin, to: end), inner)
+        return MsgPackValue(content: inner.content, byteRange: begin ..< end)
     }
 
     private func scanInner() -> MsgPackValue {
@@ -460,7 +453,7 @@ extension MsgPackScanner {
         if end <= begin {
             return inner
         }
-        return .raw(slice(from: begin, to: end), inner)
+        return MsgPackValue(content: inner.content, byteRange: begin ..< end)
     }
 
     func scanLazyInner() -> MsgPackValue {

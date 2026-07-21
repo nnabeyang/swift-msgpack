@@ -117,6 +117,32 @@ final class MsgPackRawValueTests: XCTestCase {
         }
     }
 
+    func testDecodeAdjacentHeterogeneousRawValuesPreservesExactRanges() throws {
+        let bytes = Data(hex: "952ad903666f6fc40300ff7f92c381a16bc081a17893010203")
+        let expected = [
+            Data(hex: "2a"),
+            Data(hex: "d903666f6f"),
+            Data(hex: "c40300ff7f"),
+            Data(hex: "92c381a16bc0"),
+            Data(hex: "81a17893010203"),
+        ]
+
+        try bothModes { decoder, mode in
+            let values = try decoder.decode([MsgPackRawValue].self, from: bytes)
+            XCTAssertEqual(values.map(\.data), expected, "mode: \(mode)")
+        }
+    }
+
+    func testDecodeRawValuesAfterLazyMapReverseLookupPreservesExactRanges() throws {
+        let bytes = Data(hex: "82a161d9036f6e65a16292c3c0")
+
+        try bothModes { decoder, mode in
+            let value = try decoder.decode(ReverseRawEnvelope.self, from: bytes)
+            XCTAssertEqual(value.a.data, Data(hex: "d9036f6e65"), "mode: \(mode)")
+            XCTAssertEqual(value.b.data, Data(hex: "92c3c0"), "mode: \(mode)")
+        }
+    }
+
     // Foundation's DecodableWithConfiguration conformances for Array/Optional call the
     // element's init directly as `T(from: superDecoder(), configuration:)`, bypassing the
     // special casing in _MsgPackDecoder.unwrap(as:). Verifies that init(from:) itself can
@@ -227,6 +253,22 @@ final class MsgPackRawValueTests: XCTestCase {
             let payloadBack = try decoder.decode(SamplePayload.self, from: envBack.payload.data)
             XCTAssertEqual(payloadBack, original, "mode: \(mode)")
         }
+    }
+}
+
+private struct ReverseRawEnvelope: Decodable {
+    let a: MsgPackRawValue
+    let b: MsgPackRawValue
+
+    enum CodingKeys: String, CodingKey {
+        case a
+        case b
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        b = try container.decode(MsgPackRawValue.self, forKey: .b)
+        a = try container.decode(MsgPackRawValue.self, forKey: .a)
     }
 }
 

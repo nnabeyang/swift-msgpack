@@ -75,7 +75,7 @@ final class LazyMapCursor {
         consumedPairs += 1
         pairs.append((k, v))
         var keyString: String?
-        if case let .literal(.str(buf)) = k.stripped, let s = String._tryFromUTF8(buf) {
+        if case let .literal(.str(buf)) = k.content, let s = String._tryFromUTF8(buf) {
             if stringIndex[s] == nil {
                 stringIndex[s] = pairs.count - 1
             }
