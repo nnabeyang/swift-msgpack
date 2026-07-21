@@ -14,10 +14,11 @@ extension MsgPackRawValue: Codable {
             self = try decoder.unwrap(as: Self.self)
             return
         }
-        throw DecodingError.dataCorrupted(.init(
-            codingPath: decoder.codingPath,
-            debugDescription: "MsgPackRawValue can only be decoded via MsgPackDecoder."
-        ))
+        throw DecodingError.dataCorrupted(
+            .init(
+                codingPath: decoder.codingPath,
+                debugDescription: "MsgPackRawValue can only be decoded via MsgPackDecoder."
+            ))
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -25,9 +26,11 @@ extension MsgPackRawValue: Codable {
             try encoder.fill(rawValue: self)
             return
         }
-        throw EncodingError.invalidValue(self, .init(
-            codingPath: encoder.codingPath,
-            debugDescription: "MsgPackRawValue can only be encoded via MsgPackEncoder."
-        ))
+        throw EncodingError.invalidValue(
+            self,
+            .init(
+                codingPath: encoder.codingPath,
+                debugDescription: "MsgPackRawValue can only be encoded via MsgPackEncoder."
+            ))
     }
 }

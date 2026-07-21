@@ -10,10 +10,7 @@ let package = Package(
         .library(
             name: "SwiftMsgpack",
             targets: ["SwiftMsgpack"]
-        ),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/nicklockwood/SwiftFormat", exact: "0.53.8")
+        )
     ],
     targets: [
         .target(
@@ -23,7 +20,7 @@ let package = Package(
         .executableTarget(
             name: "example",
             dependencies: [
-                "SwiftMsgpack",
+                "SwiftMsgpack"
             ],
             path: "Example"
         ),

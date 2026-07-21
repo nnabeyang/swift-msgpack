@@ -9,9 +9,10 @@ final class DecodeTests: XCTestCase {
 
     let encoder: MsgPackEncoder = .init()
 
-    private func t<X: Decodable & Equatable>(in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil,
-                                             file: StaticString = #filePath, line: UInt = #line)
-    {
+    private func t<X: Decodable & Equatable>(
+        in input: String, type typ: X.Type, out: X, errorType: Error.Type? = nil,
+        file: StaticString = #filePath, line: UInt = #line
+    ) {
         for (mode, label) in Self.allModes {
             let decoder = MsgPackDecoder(options: mode)
             do {
@@ -111,26 +112,30 @@ final class DecodeTests: XCTestCase {
         t(in: "92e0e1", type: IS.self, out: IS(a: [-0x20, -0x1F]))
         t(in: "92ca4015c28fca4048f5c3", type: FS.self, out: FS(a: [2.34, 3.14]))
         t(in: "92c2c3", type: BS.self, out: BS(a: [false, true]))
-        t(in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
-          type: [Small].self,
-          out: [.init(tag: "tag1"), .init(tag: "tag2"), .init(tag: "tag3"), .init(tag: "tag4")])
-        t(in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
-          type: [Small: Small].self,
-          out: [.init(tag: "tag1"): .init(tag: "tag2"), .init(tag: "tag3"): .init(tag: "tag4")])
-        t(in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
-          type: AnyCodable.self,
-          out: AnyCodable([
-              AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]),
-              AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
-              AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]),
-              AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
-          ]))
-        t(in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
-          type: AnyCodable.self,
-          out: AnyCodable([
-              AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
-              AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
-          ]))
+        t(
+            in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
+            type: [Small].self,
+            out: [.init(tag: "tag1"), .init(tag: "tag2"), .init(tag: "tag3"), .init(tag: "tag4")])
+        t(
+            in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
+            type: [Small: Small].self,
+            out: [.init(tag: "tag1"): .init(tag: "tag2"), .init(tag: "tag3"): .init(tag: "tag4")])
+        t(
+            in: "9481a3746167a47461673181a3746167a47461673281a3746167a47461673381a3746167a474616734",
+            type: AnyCodable.self,
+            out: AnyCodable([
+                AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]),
+                AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
+                AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]),
+                AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
+            ]))
+        t(
+            in: "8281a3746167a47461673381a3746167a47461673481a3746167a47461673181a3746167a474616732",
+            type: AnyCodable.self,
+            out: AnyCodable([
+                AnyCodable([AnyCodable("tag"): AnyCodable("tag1")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag2")]),
+                AnyCodable([AnyCodable("tag"): AnyCodable("tag3")]): AnyCodable([AnyCodable("tag"): AnyCodable("tag4")]),
+            ]))
         // nestedUnKeyedContainer
         t(in: "92921234925678", type: UIS2.self, out: UIS2(a: [[0x12, 0x34], [0x56, 0x78]]))
         // nestedContainer

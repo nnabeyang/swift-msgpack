@@ -351,10 +351,12 @@ private extension _SpecialTreatmentEncoder {
         } else {
             path = codingPath
         }
-        throw EncodingError.invalidValue(value, .init(
-            codingPath: path,
-            debugDescription: "Unable to encode \(F.self).\(value) directly in MessagePack."
-        ))
+        throw EncodingError.invalidValue(
+            value,
+            .init(
+                codingPath: path,
+                debugDescription: "Unable to encode \(F.self).\(value) directly in MessagePack."
+            ))
     }
 
     func wrapInt<T: SignedInteger & FixedWidthInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
@@ -380,10 +382,12 @@ private extension _SpecialTreatmentEncoder {
         } else {
             path = codingPath
         }
-        throw EncodingError.invalidValue(value, .init(
-            codingPath: path,
-            debugDescription: "Unable to encode \(T.self).\(value) directly in MessagePack."
-        ))
+        throw EncodingError.invalidValue(
+            value,
+            .init(
+                codingPath: path,
+                debugDescription: "Unable to encode \(T.self).\(value) directly in MessagePack."
+            ))
     }
 
     func wrapUInt<T: UnsignedInteger & FixedWidthInteger>(_ value: T, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
@@ -409,10 +413,12 @@ private extension _SpecialTreatmentEncoder {
         } else {
             path = codingPath
         }
-        throw EncodingError.invalidValue(value, .init(
-            codingPath: path,
-            debugDescription: "Unable to encode \(T.self).\(value) directly in MessagePack."
-        ))
+        throw EncodingError.invalidValue(
+            value,
+            .init(
+                codingPath: path,
+                debugDescription: "Unable to encode \(T.self).\(value) directly in MessagePack."
+            ))
     }
 
     func wrapBool(_ value: Bool) -> MsgPackEncodedValue {
@@ -431,10 +437,12 @@ private extension _SpecialTreatmentEncoder {
         } else {
             path = codingPath
         }
-        throw EncodingError.invalidValue(value, .init(
-            codingPath: path,
-            debugDescription: "Unable to encode String.\(value) directly in MessagePack."
-        ))
+        throw EncodingError.invalidValue(
+            value,
+            .init(
+                codingPath: path,
+                debugDescription: "Unable to encode String.\(value) directly in MessagePack."
+            ))
     }
 
     func wrapRaw(_ value: [UInt8]) -> MsgPackEncodedValue? {
@@ -443,11 +451,12 @@ private extension _SpecialTreatmentEncoder {
         if n <= UInt.maxUint5 {
             bits = [UInt8(0xA0 + n)] + value
         } else if n <= UInt16.max {
-            bits = if options.contains(.str8FormatSupport), n <= UInt8.max {
-                [0xD9, UInt8(n)] + value
-            } else {
-                [0xDA] + n.bigEndianBytes(as: UInt16.self) + value
-            }
+            bits =
+                if options.contains(.str8FormatSupport), n <= UInt8.max {
+                    [0xD9, UInt8(n)] + value
+                } else {
+                    [0xDA] + n.bigEndianBytes(as: UInt16.self) + value
+                }
         } else if n <= UInt32.max {
             bits = [0xDB] + n.bigEndianBytes(as: UInt32.self) + value
         } else {
@@ -514,10 +523,12 @@ private extension _SpecialTreatmentEncoder {
             } else {
                 path = codingPath
             }
-            throw EncodingError.invalidValue(raw, .init(
-                codingPath: path,
-                debugDescription: "MsgPackRawValue has empty data."
-            ))
+            throw EncodingError.invalidValue(
+                raw,
+                .init(
+                    codingPath: path,
+                    debugDescription: "MsgPackRawValue has empty data."
+                ))
         }
         return .literal([UInt8](raw.data))
     }
@@ -546,10 +557,12 @@ private extension _SpecialTreatmentEncoder {
         } else {
             path = codingPath
         }
-        throw EncodingError.invalidValue(data, .init(
-            codingPath: path,
-            debugDescription: "Unable to encode Data.\(data) directly in MessagePack."
-        ))
+        throw EncodingError.invalidValue(
+            data,
+            .init(
+                codingPath: path,
+                debugDescription: "Unable to encode Data.\(data) directly in MessagePack."
+            ))
     }
 
     func wrapMsgPackEncodable(_ encodable: MsgPackEncodable, for additionalKey: CodingKey?) throws -> MsgPackEncodedValue {
@@ -581,10 +594,12 @@ private extension _SpecialTreatmentEncoder {
                 } else {
                     path = codingPath
                 }
-                throw EncodingError.invalidValue(encodable, .init(
-                    codingPath: path,
-                    debugDescription: "Unable to encode \(type(of: encodable)).\(encodable) directly in MessagePack."
-                ))
+                throw EncodingError.invalidValue(
+                    encodable,
+                    .init(
+                        codingPath: path,
+                        debugDescription: "Unable to encode \(type(of: encodable)).\(encodable) directly in MessagePack."
+                    ))
             }
         }
         d.append(contentsOf: encodable.type.bigEndianBytes(as: Int8.self))
