@@ -37,6 +37,7 @@ final class MsgPackRawValueTests: XCTestCase {
         }
     }
 
+    @available(iOS 17, *)
     func testDecodePayloadInEnvelopeForIntWithConfig() throws {
         let bytes = Data(hex: "82a46b696e64a3666f6fa77061796c6f61642a")
         try bothModes { decoder, mode in
@@ -147,6 +148,7 @@ final class MsgPackRawValueTests: XCTestCase {
     // element's init directly as `T(from: superDecoder(), configuration:)`, bypassing the
     // special casing in _MsgPackDecoder.unwrap(as:). Verifies that init(from:) itself can
     // handle a _MsgPackDecoder.
+    @available(iOS 17, *)
     func testDecodeArrayOfRawValuesWithConfig() throws {
         let bytes = Data(hex: "93c3c0a3666f6f")
         try bothModes { decoder, mode in
@@ -158,6 +160,7 @@ final class MsgPackRawValueTests: XCTestCase {
         }
     }
 
+    @available(iOS 17, *)
     func testDecodeOptionalArrayOfRawValuesWithConfig() throws {
         let bytes = Data(hex: "93c3c0a3666f6f")
         try bothModes { decoder, mode in
