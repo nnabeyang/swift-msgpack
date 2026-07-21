@@ -211,48 +211,52 @@ enum MsgPackOpCode {
     case array(UInt8)
     case map(UInt8)
     case ext(UInt8)
-    case simple(UInt8)
+    case `nil`
+    case bool(Bool)
+    case float(UInt8)
     case neverUsed
     case end
 
     init(ch c: UInt8) {
-        if c <= 0xBF || c >= 0xE0 {
-            if c & 0xE0 == 0xE0 {
-                self = .int(c)
-            } else if c & 0xA0 == 0xA0 {
-                self = .str(c - 0xA0)
-            } else if c & 0x90 == 0x90 {
-                self = .array(c - 0x90)
-            } else if c & 0x80 == 0x80 {
-                self = .map(c - 0x80)
-            } else if c & 0x80 == 0 {
-                self = .uint(c)
-            } else {
-                self = .neverUsed
-            }
-        } else {
-            switch c {
-            case 0xC1:
-                self = .neverUsed
-            case 0xC4 ... 0xC6:
-                self = .bin(c - 0x44)
-            case 0xDC, 0xDD:
-                self = .array(c - 0x5B)
-            case 0xDE, 0xDF:
-                self = .map(c - 0x5D)
-            case 0xC7 ... 0xC9:
-                self = .ext(c - 0x47)
-            case 0xCC ... 0xCF:
-                self = .uint(c - 0x4C)
-            case 0xD0 ... 0xD3:
-                self = .int(c - 0x50)
-            case 0xD9 ... 0xDB:
-                self = .str(c - 0x59)
-            case 0xD4 ... 0xD8:
-                self = .ext(1 << (c - 0xD4))
-            default:
-                self = .simple(c)
-            }
+        switch c {
+        case 0x00 ... 0x7F:
+            self = .uint(c)
+        case 0x80 ... 0x8F:
+            self = .map(c - 0x80)
+        case 0x90 ... 0x9F:
+            self = .array(c - 0x90)
+        case 0xA0 ... 0xBF:
+            self = .str(c - 0xA0)
+        case 0xC0:
+            self = .nil
+        case 0xC1:
+            self = .neverUsed
+        case 0xC2:
+            self = .bool(false)
+        case 0xC3:
+            self = .bool(true)
+        case 0xC4 ... 0xC6:
+            self = .bin(c - 0x44)
+        case 0xC7 ... 0xC9:
+            self = .ext(c - 0x47)
+        case 0xCA, 0xCB:
+            self = .float(c)
+        case 0xCC ... 0xCF:
+            self = .uint(c - 0x4C)
+        case 0xD0 ... 0xD3:
+            self = .int(c - 0x50)
+        case 0xD4 ... 0xD8:
+            self = .ext(1 << (c - 0xD4))
+        case 0xD9 ... 0xDB:
+            self = .str(c - 0x59)
+        case 0xDC, 0xDD:
+            self = .array(c - 0x5B)
+        case 0xDE, 0xDF:
+            self = .map(c - 0x5D)
+        case 0xE0 ... 0xFF:
+            self = .int(c)
+        default:
+            fatalError("Unreachable: all UInt8 opcodes are handled")
         }
     }
 }
@@ -336,8 +340,12 @@ class MsgPackScanner {
             scanArray(c)
         case let .map(c):
             scanMap(c)
-        case let .simple(c):
-            scanSimple(c)
+        case .nil:
+            .literal(.nil)
+        case let .bool(value):
+            .literal(.bool(value))
+        case let .float(c):
+            scanFloat(c)
         }
     }
 
@@ -394,14 +402,8 @@ class MsgPackScanner {
         return .ext(typeNo, .init(buffer: readBuffer(n)))
     }
 
-    private func scanSimple(_ c: UInt8) -> MsgPackValue {
+    private func scanFloat(_ c: UInt8) -> MsgPackValue {
         switch c {
-        case 0xC0:
-            .literal(.nil)
-        case 0xC2:
-            .literal(.bool(false))
-        case 0xC3:
-            .literal(.bool(true))
         case 0xCA:
             .literal(.float32(.init(bitPattern: readUnaligned(as: UInt32.self).bigEndian)))
         case 0xCB:
@@ -485,8 +487,12 @@ extension MsgPackScanner {
                 skipOne()
             }
             return .lazyMap(LazyMapCursor(scanner: self, start: start, pairCount: n))
-        case let .simple(c):
-            return scanSimple(c)
+        case .nil:
+            return .literal(.nil)
+        case let .bool(value):
+            return .literal(.bool(value))
+        case let .float(c):
+            return scanFloat(c)
         }
     }
 
@@ -516,8 +522,10 @@ extension MsgPackScanner {
                 skipOne()
                 skipOne()
             }
-        case let .simple(c):
-            _ = scanSimple(c)
+        case .nil, .bool:
+            return
+        case let .float(c):
+            _ = scanFloat(c)
         }
     }
 }
