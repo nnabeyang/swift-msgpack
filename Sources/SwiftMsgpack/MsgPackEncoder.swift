@@ -58,7 +58,7 @@ open class MsgPackEncoder {
     }
 }
 
-indirect enum MsgPackEncodedValue {
+enum MsgPackEncodedValue {
     case none
     case literal([UInt8])
     case ext(Int8, [UInt8])
