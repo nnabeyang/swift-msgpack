@@ -258,6 +258,25 @@ final class DecodeTests: XCTestCase {
             XCTAssertEqual(decoded, ConfiguredInt(value: 50), "mode: \(label)")
         }
     }
+
+    func testDecodeExtractedDataField() throws {
+        struct Inner: Codable, Equatable {
+            let value: Int
+        }
+        struct Outer: Codable {
+            let inner: Data
+        }
+
+        let innerBytes = try encoder.encode(Inner(value: 7))
+        let outerBytes = try encoder.encode(Outer(inner: innerBytes))
+
+        for (mode, label) in Self.allModes {
+            let decoder = MsgPackDecoder(options: mode)
+            let decodedOuter = try decoder.decode(Outer.self, from: outerBytes)
+            let nested = try decoder.decode(Inner.self, from: decodedOuter.inner)
+            XCTAssertEqual(nested, Inner(value: 7), "mode: \(label)")
+        }
+    }
 }
 
 private struct AnyCodingKeys: CodingKey {
